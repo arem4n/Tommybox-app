@@ -1,5 +1,7 @@
 {
-  "description": "Tommybox fitness ",
-  "requestFramePermissions": [],
-  "name": "Tommybox "
+  "name": "TommyBox Fitness App",
+  "description": "A comprehensive fitness application for clients and trainers to manage workout plans, schedule sessions, track progress, and communicate. It features personalized dashboards, progress charts, a community achievements board, and real-time chat functionality.",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

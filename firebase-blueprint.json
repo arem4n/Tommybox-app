@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "registrationCompleted": { "type": "boolean" },
+        "plan": { "type": "string" },
+        "isTrainer": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "photoURL": { "type": "string" },
+        "lastBirthdayBonusYear": { "type": "number" },
+        "gamification": { "$ref": "#/entities/GamificationProfile" }
+      },
+      "required": ["email", "username", "isTrainer", "createdAt"]
+    },
+    "GamificationProfile": {
+      "title": "GamificationProfile",
+      "description": "User's gamification stats",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "totalPoints": { "type": "number" },
+        "level": { "type": "number" },
+        "experience": { "type": "number" },
+        "experienceToNextLevel": { "type": "number" }
+      }
+    },
+    "Metric": {
+      "title": "Metric",
+      "description": "Workout metric",
+      "type": "object",
+      "properties": {
+        "exercise": { "type": "string" },
+        "load": { "type": "number" },
+        "reps": { "type": "number" },
+        "rpe": { "type": "number" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["exercise", "load", "reps", "date", "timestamp"]
+    },
+    "Observation": {
+      "title": "Observation",
+      "description": "Trainer observation",
+      "type": "object",
+      "properties": {
+        "comment": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["comment", "date", "timestamp"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Training session",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "time", "timestamp"]
+    },
+    "Feeling": {
+      "title": "Feeling",
+      "description": "Post-workout feeling",
+      "type": "object",
+      "properties": {
+        "feeling": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["feeling", "date", "timestamp"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "User achievement",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "userEmail", "timestamp"]
+    },
+    "RedeemedReward": {
+      "title": "RedeemedReward",
+      "description": "A reward redeemed by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "rewardId": { "type": "string" },
+        "rewardName": { "type": "string" },
+        "type": { "type": "string" },
+        "pointsSpent": { "type": "number" },
+        "pricePaid": { "type": "number" },
+        "status": { "type": "string" },
+        "redeemedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "rewardId", "rewardName", "type", "pointsSpent", "pricePaid", "status", "redeemedAt"]
+    },
+    "DailyActionTracker": {
+      "title": "DailyActionTracker",
+      "description": "Tracks daily actions for gamification limits",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "actions": { "type": "object" }
+      },
+      "required": ["userId", "date", "actions"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "User profiles"
+    },
+    "/users/{userId}/metrics/{metricId}": {
+      "schema": "#/entities/Metric",
+      "description": "User metrics"
+    },
+    "/users/{userId}/observations/{observationId}": {
+      "schema": "#/entities/Observation",
+      "description": "Trainer observations for user"
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "#/entities/Session",
+      "description": "User sessions"
+    },
+    "/users/{userId}/feelings/{feelingId}": {
+      "schema": "#/entities/Feeling",
+      "description": "User feelings"
+    },
+    "/users/{userId}/dailyTrackers/{date}": {
+      "schema": "#/entities/DailyActionTracker",
+      "description": "Daily action limits for the user"
+    },
+    "/achievements/{achievementId}": {
+      "schema": "#/entities/Achievement",
+      "description": "Global achievements"
+    },
+    "/pendingAchievements/{achievementId}": {
+      "schema": "#/entities/Achievement",
+      "description": "Pending achievements to be approved by trainer"
+    },
+    "/publicAchievements/{achievementId}": {
+      "schema": "#/entities/Achievement",
+      "description": "Publicly visible achievements"
+    },
+    "/redemptions/{redemptionId}": {
+      "schema": "#/entities/RedeemedReward",
+      "description": "Rewards redeemed by users"
+    }
+  }
+}

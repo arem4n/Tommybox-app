@@ -1,0 +1,178 @@
+
+import React from 'react';
+import { Timestamp } from 'firebase/firestore';
+
+export type View = 'home' | 'plans' | 'agenda' | 'dashboard' | 'achievements' | 'login' | 'chat' | 'rewards-store' | 'profile';
+
+export interface Plan {
+  name: string;
+  price: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+export interface Session {
+  id: string;
+  date: string;
+  time: string;
+  timestamp: Timestamp;
+}
+
+export interface Metric {
+    id: string;
+    exercise: string;
+    load: number;
+    reps: number;
+    rpe?: number; // Rate of Perceived Exertion (1-10)
+    date: string;
+    timestamp: Timestamp;
+}
+
+export interface Observation {
+    id: string;
+    comment: string;
+    date: string;
+    timestamp: Timestamp;
+}
+
+// This type is for both public and user-specific achievements.
+export interface Achievement {
+    id: string;
+    text: string; // For public display
+    userEmail: string;
+    timestamp: Timestamp;
+    // Fields for user-specific, progress-based achievements
+    title?: string;
+    description?: string;
+    points?: number;
+    progress?: number;
+    total?: number;
+    completed?: boolean;
+    completedAt?: Timestamp;
+    type?: AchievementType;
+}
+
+export type AchievementType = 
+  | 'attendance' // Asistencia
+  | 'consistency' // Rachas
+  | 'progress' // Mejoras de peso/reps
+  | 'social' // Interacción
+  | 'feedback' // Registrar sensaciones
+  | 'milestone' // Hitos específicos
+  | 'challenge'; // Desafíos temporales
+
+
+export interface Feeling {
+    id: string;
+    feeling: string;
+    date: string;
+    timestamp: Timestamp;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  unlockedAt: Timestamp;
+  category: 'consistency' | 'strength' | 'social' | 'milestone' | 'special';
+}
+
+export interface Streak {
+  type: 'training';
+  current: number;
+  best: number;
+  lastUpdate: Timestamp;
+}
+
+export interface GamificationProfile {
+  userId: string;
+  totalPoints: number;
+  level: number;
+  experience: number;
+  experienceToNextLevel: number;
+  badges: Badge[];
+  achievements: Achievement[];
+  streaks: Streak[];
+}
+
+export interface UserProfile {
+    email: string;
+    username: string; // Used for login
+    displayName?: string; // New: For display
+    birthDate?: string; // New: "YYYY-MM-DD"
+    registrationCompleted?: boolean; // New
+    password?: string;
+    plan?: string;
+    isTrainer: boolean;
+    createdAt: Timestamp;
+    gamification: GamificationProfile;
+    photoURL?: string; // New: For profile picture (Base64)
+    lastBirthdayBonusYear?: number; // For birthday bonus tracking
+}
+
+export interface DailyActionTracker {
+  userId: string;
+  date: string; // YYYY-MM-DD
+  actions: {
+    POST_WORKOUT_SENSATION?: number;
+    CHECK_IN?: number;
+  };
+}
+
+export interface PointsAwarded {
+    points: number;
+    newBadges: Badge[];
+    leveledUp: boolean;
+    newLevel: number;
+}
+
+export interface RewardItem {
+  id: string;
+  name: string;
+  description: string;
+  pointsCost: number;
+  price: number; // New field for monetary cost
+  category: 'merch' | 'subscription' | 'exclusive';
+  imageUrl: string;
+  stock: number | 'unlimited';
+  icon: string;
+}
+
+export interface RedeemedReward {
+  id: string;
+  userId: string;
+  rewardId: string;
+  rewardName: string;
+  pointsSpent: number; // 0 if purchased with cash
+  pricePaid?: number; // New: track if money was spent
+  redeemedAt: Timestamp;
+  status: 'pending' | 'shipped' | 'delivered' | 'activated';
+  type: 'redemption' | 'purchase'; // New: distinguish transaction type
+}
+
+export const calculateAge = (birthDate: string): number => {
+  if (!birthDate) return 0;
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
+export const isBirthdayToday = (birthDate: string): boolean => {
+  if (!birthDate) return false;
+  const today = new Date();
+  const birth = new Date(birthDate);
+  
+  return (
+    today.getMonth() === birth.getMonth() &&
+    today.getDate() === birth.getDate()
+  );
+};
