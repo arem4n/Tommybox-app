@@ -20,7 +20,7 @@ const CommunitySection = ({ user }: { user: any }) => {
 
     try {
       await addDoc(collection(db, 'community'), {
-        authorId: user.uid,
+        authorId: user.id,
         displayName: user.displayName || 'Anonymous',
         content: newPostContent,
         createdAt: serverTimestamp()

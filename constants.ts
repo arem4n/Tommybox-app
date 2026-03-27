@@ -2,7 +2,7 @@
 import { View } from './types';
 
 // App views
-export const views: { [key: string]: View } = {
+export const views: { [key: string]: string } = {
   HOME: 'home',
   PLANS: 'plans',
   AGENDA: 'agenda',
