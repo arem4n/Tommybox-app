@@ -1,13 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, BarChart, Star, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import { Dumbbell, BarChart, Star, ChevronLeft, ChevronRight, Quote, X } from 'lucide-react';
 import { View } from '../../types';
 
 interface HomeViewProps {
-  setCurrentView: (view: View) => void;
+
+  handleLogin: () => Promise<void>;
+  onEmailAuth: (email: string, password: string, isRegistering: boolean) => Promise<void>;
+  authError: string;
 }
 
-const HomeView: React.FC<HomeViewProps> = ({ setCurrentView }) => {
+const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmailAuth, authError }) => {
   const testimonials = [
     { text: 'Desde que empecé con Tommybox, mis dolores de espalda han desaparecido. La atención personalizada y el enfoque en la técnica han marcado una diferencia real.', author: 'María G.', rating: 5 },
     { text: 'Logré mis objetivos de fuerza en menos tiempo de lo que esperaba. El programa es desafiante, pero siempre seguro. ¡Muy recomendado!', author: 'Juan P.', rating: 5 },

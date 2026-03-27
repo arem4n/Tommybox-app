@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { Dumbbell, Zap, Award } from 'lucide-react';
+import { Dumbbell, Zap, Award, CreditCard, Building2, X } from 'lucide-react';
 
 const DEFAULT_PLANS = [
   {
@@ -50,6 +50,7 @@ const renderIcon = (iconName: string, isCurrent: boolean, featured: boolean) => 
 const PlansSection = ({ user }: { user: any }) => {
   const [plans, setPlans] = useState<any[]>([]);
   const [currentPlan, setCurrentPlan] = useState<string>(user?.plan || 'free');
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -72,22 +73,33 @@ const PlansSection = ({ user }: { user: any }) => {
       return () => unsubscribe();
   }, [user?.id]);
 
-  const selectPlan = async (planId: string, planName: string) => {
-    if (!user?.id) return;
+  const handleCardPayment = async () => {
+    if (!user?.id || !selectedPlanForPayment) return;
     try {
-      const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, {
-        plan: planId
-      });
+      await updateDoc(doc(db, 'users', user.id), { plan: selectedPlanForPayment.id });
+      setSelectedPlanForPayment(null);
     } catch (error) {
       console.error("Error updating plan: ", error);
+    }
+  };
+
+  const handleTransferPayment = async () => {
+    if (!user?.id || !selectedPlanForPayment) return;
+    try {
+      await updateDoc(doc(db, 'users', user.id), {
+        plan: selectedPlanForPayment.id,
+        paymentStatus: 'pending_verification'
+      });
+      setSelectedPlanForPayment(null);
+    } catch (error) {
+      console.error("Error updating plan status: ", error);
     }
   };
 
   const plansToRender = plans.length > 0 ? plans : DEFAULT_PLANS;
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in">
+    <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in relative">
       <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">Elige el plan perfecto para ti</h2>
           <p className="text-xl text-gray-500">Transforma tu vida con nuestros programas de entrenamiento personalizado.</p>
@@ -149,7 +161,7 @@ const PlansSection = ({ user }: { user: any }) => {
               </div>
 
               <button
-                onClick={() => selectPlan(plan.id, plan.name)}
+                onClick={() => setSelectedPlanForPayment(plan)}
                 disabled={isCurrent}
                 className={`w-full py-4 rounded-2xl font-black text-lg transition-all ${
                   isCurrent
@@ -165,6 +177,76 @@ const PlansSection = ({ user }: { user: any }) => {
           );
         })}
       </div>
+
+      {/* Payment Modal */}
+      {selectedPlanForPayment && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full relative shadow-2xl overflow-y-auto max-h-[90vh]">
+            <button
+              onClick={() => setSelectedPlanForPayment(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            <h2 className="text-3xl font-black text-gray-900 mb-2 text-center">Confirmar Plan</h2>
+            <p className="text-center text-gray-500 font-medium text-lg mb-8">
+              {selectedPlanForPayment.name} — <span className="font-bold text-blue-600">${(selectedPlanForPayment.price/1000).toFixed(0)}.000</span>
+            </p>
+
+            <div className="space-y-6">
+              {/* Option 1: Card */}
+              <div className="border border-gray-200 rounded-2xl p-6 bg-gray-50/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                    <CreditCard size={24} />
+                  </div>
+                  <h3 className="font-bold text-xl text-gray-900">Pagar con tarjeta</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                  Integración con Webpay próximamente. Tu plan será activado manualmente tras confirmar.
+                </p>
+                <button
+                  onClick={handleCardPayment}
+                  className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20"
+                >
+                  Confirmar de todas formas
+                </button>
+              </div>
+
+              {/* Option 2: Transfer */}
+              <div className="border border-gray-200 rounded-2xl p-6 bg-gray-50/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-green-100 text-green-600 rounded-xl">
+                    <Building2 size={24} />
+                  </div>
+                  <h3 className="font-bold text-xl text-gray-900">Transferencia bancaria</h3>
+                </div>
+                <div className="bg-white rounded-xl p-4 text-sm font-medium text-gray-700 space-y-2 mb-6 border border-gray-100">
+                  <p><span className="text-gray-500 w-24 inline-block">Banco:</span> BancoEstado</p>
+                  <p><span className="text-gray-500 w-24 inline-block">Cuenta Rut:</span> 12.345.678-9</p>
+                  <p><span className="text-gray-500 w-24 inline-block">N° Cuenta:</span> 123456789</p>
+                  <p><span className="text-gray-500 w-24 inline-block">Nombre:</span> Tommy Box SpA</p>
+                  <p><span className="text-gray-500 w-24 inline-block">Email:</span> pagos@tommybox.cl</p>
+                </div>
+                <button
+                  onClick={handleTransferPayment}
+                  className="w-full py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors shadow-md shadow-green-500/20"
+                >
+                  Ya realicé la transferencia
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSelectedPlanForPayment(null)}
+              className="w-full py-3 mt-6 text-gray-500 hover:text-gray-700 font-bold underline transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
