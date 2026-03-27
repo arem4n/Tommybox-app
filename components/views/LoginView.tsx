@@ -18,35 +18,34 @@ interface RegistrationModalProps {
   onClose: () => void;
   onComplete: (user: UserProfile & { id: string }, data: { displayName: string, birthDate: string, plan: string }) => Promise<void> | void;
 }
-
 const ONBOARDING_PLANS = [
   {
-    id: 'starter',
-    name: 'Starter',
-    price: 0,
+    id: "plan_1",
+    name: "1 Sesión / Semana",
+    price: 70000,
     badge: null,
-    features: ['Acceso a la agenda', 'Comunidad básica', '1 rutina por semana'],
+    features: ["4 sesiones al mes", "Programa personalizado", "Seguimiento de progreso"],
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    price: 19990,
-    badge: 'Recomendado',
-    features: ['Todo lo de Starter', 'Rutinas ilimitadas', 'Seguimiento de progreso', 'Chat con entrenador'],
+    id: "plan_2",
+    name: "2 Sesiones / Semana",
+    price: 80000,
+    badge: "Más Popular",
+    features: ["8 sesiones al mes", "Programa personalizado", "Seguimiento de progreso", "Chat con entrenador"],
   },
   {
-    id: 'elite',
-    name: 'Elite',
-    price: 34990,
+    id: "plan_3",
+    name: "3 Sesiones / Semana",
+    price: 90000,
     badge: null,
-    features: ['Todo lo de Pro', 'Sesiones 1 a 1', 'Plan nutricional', 'Acceso prioritario'],
+    features: ["12 sesiones al mes", "Programa personalizado", "Seguimiento de progreso", "Chat con entrenador", "Acceso prioritario"],
   },
 ];
 
 const RegistrationModal: React.FC<RegistrationModalProps> = ({ userToComplete, onClose, onComplete }) => {
   const [userData, setUserData] = useState({ displayName: '', birthDate: '' });
   const [step, setStep] = useState<1 | 2>(1);
-  const [selectedPlan, setSelectedPlan] = useState<string>('pro');
+  const [selectedPlan, setSelectedPlan] = useState<string>('plan_2');
 
   const handleNextStep = () => {
     if (!userData.displayName || !userData.birthDate) {
