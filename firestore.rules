@@ -105,27 +105,32 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
       allow create: if isAuthenticated() && isOwner(userId) && isValidUserProfile() && (request.resource.data.isTrainer == false || isTrainer());
       allow update: if isAuthenticated() && (isOwner(userId) || isTrainer());
       allow delete: if isTrainer();
       
       match /metrics/{metricId} {
         allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
         allow create, update, delete: if isTrainer();
       }
       
       match /observations/{observationId} {
         allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
         allow create, update, delete: if isTrainer();
       }
       
       match /sessions/{sessionId} {
         allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
         allow create, update, delete: if isTrainer();
       }
       
       match /feelings/{feelingId} {
         allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
         allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['feeling', 'date', 'timestamp']) &&
                       validStringLength('feeling', 1, 1000) &&
                       request.resource.data.date is string &&
@@ -135,6 +140,7 @@ service cloud.firestore {
       
       match /dailyTrackers/{date} {
         allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
         allow create, update: if isOwner(userId) || isTrainer();
         allow delete: if isTrainer();
       }
@@ -180,6 +186,7 @@ service cloud.firestore {
     }
     match /agenda/{userId}/events/{eventId} {
       allow read: if isOwner(userId) || isTrainer();
+      allow list: if isTrainer();
       allow create: if isOwner(userId) &&
                     request.resource.data.keys().hasAll(['date', 'time', 'createdAt']) &&
                     request.resource.data.date is string &&
