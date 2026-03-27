@@ -2,7 +2,7 @@
 import React from 'react';
 import { Timestamp } from 'firebase/firestore';
 
-export type View = 'home' | 'plans' | 'agenda' | 'dashboard' | 'achievements' | 'login' | 'chat' | 'rewards-store' | 'profile';
+export type View = 'home' | 'plans' | 'login';
 
 export interface Plan {
   name: string;

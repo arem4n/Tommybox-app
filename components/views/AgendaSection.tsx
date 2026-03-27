@@ -10,7 +10,7 @@ const AgendaSection = ({ user }: { user: any }) => {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, `agenda/${user.uid}/events`), orderBy('date', 'asc'));
+    const q = query(collection(db, `agenda/${user.id}/events`), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
@@ -22,7 +22,7 @@ const AgendaSection = ({ user }: { user: any }) => {
     if (!title || !date || !user) return;
 
     try {
-      await addDoc(collection(db, `agenda/${user.uid}/events`), {
+      await addDoc(collection(db, `agenda/${user.id}/events`), {
         title,
         date: new Date(date),
         description,
@@ -39,7 +39,7 @@ const AgendaSection = ({ user }: { user: any }) => {
   const handleDeleteEvent = async (eventId: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, `agenda/${user.uid}/events`, eventId));
+      await deleteDoc(doc(db, `agenda/${user.id}/events`, eventId));
     } catch (error) {
       console.error("Error deleting event: ", error);
     }

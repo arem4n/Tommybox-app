@@ -104,10 +104,11 @@ const App: React.FC = () => {
     }
   };
 
-  const completeRegistration = async (userToComplete: UserProfile & { id: string }, additionalData: { displayName: string; birthDate: string }) => {
+  const completeRegistration = async (userToComplete: UserProfile & { id: string }, additionalData: { displayName: string; birthDate: string; plan: string }) => {
       const updatedData: Partial<UserProfile> = {
         displayName: additionalData.displayName,
         birthDate: additionalData.birthDate,
+        plan: additionalData.plan || "starter",
         registrationCompleted: true,
       };
       

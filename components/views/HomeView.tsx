@@ -77,7 +77,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView }) => {
           <p className="mt-6 text-lg text-gray-600 md:text-xl leading-relaxed">
             Buscas un entrenamiento que entienda tu cuerpo, tus limitaciones y tu estilo de vida. Un método que se adapte a ti, con progresión dinámica y enfoque personalizado, para que cada sesión te acerque a tus objetivos con seguridad y efectividad, sin planes rígidos ni fórmulas genéricas.
           </p>
-          <button onClick={() => setCurrentView('plans')} className="mt-8 transform rounded-full bg-blue-600 px-8 py-3 text-lg font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-blue-700">
+          <button onClick={() => document.getElementById('login-section')?.scrollIntoView({ behavior: 'smooth' })} className="mt-8 transform rounded-full bg-blue-600 px-8 py-3 text-lg font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-blue-700">
             Descubre tu plan ideal
           </button>
         </div>
@@ -172,7 +172,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView }) => {
                 <h2 className="text-3xl md:text-5xl font-black text-white mb-6">¿Listo para transformar tu vida?</h2>
                 <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">Únete a la comunidad de Tommybox y empieza a entrenar de forma inteligente hoy mismo.</p>
                 <button 
-                    onClick={() => setCurrentView('plans')}
+                    onClick={() => document.getElementById('login-section')?.scrollIntoView({ behavior: 'smooth' })}
                     className="bg-white text-blue-900 px-10 py-4 rounded-full font-bold text-lg hover:bg-blue-50 transition-transform hover:scale-105 shadow-xl"
                 >
                     Ver Planes Disponibles

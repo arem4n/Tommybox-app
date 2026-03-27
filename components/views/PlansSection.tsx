@@ -2,6 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 
+const DEFAULT_PLANS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: 0,
+    features: ['Acceso a la agenda', 'Comunidad básica', '1 rutina por semana'],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 19990,
+    features: ['Todo lo de Starter', 'Rutinas ilimitadas', 'Seguimiento de progreso', 'Chat con entrenador'],
+  },
+  {
+    id: 'elite',
+    name: 'Elite',
+    price: 34990,
+    features: ['Todo lo de Pro', 'Sesiones 1 a 1', 'Plan nutricional', 'Acceso prioritario'],
+  },
+];
+
 const PlansSection = ({ user }: { user: any }) => {
   const [plans, setPlans] = useState<any[]>([]);
   const [currentPlan, setCurrentPlan] = useState<string>(user?.plan || 'free');
@@ -18,19 +39,19 @@ const PlansSection = ({ user }: { user: any }) => {
   }, []);
 
   useEffect(() => {
-      if (!user?.uid) return;
-      const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+      if (!user?.id) return;
+      const unsubscribe = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
           if (docSnap.exists()) {
               setCurrentPlan(docSnap.data().plan || 'free');
           }
       });
       return () => unsubscribe();
-  }, [user?.uid]);
+  }, [user?.id]);
 
   const selectPlan = async (planId: string, planName: string) => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
     try {
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, {
         plan: planId
       });
@@ -39,11 +60,13 @@ const PlansSection = ({ user }: { user: any }) => {
     }
   };
 
+  const plansToRender = plans.length > 0 ? plans : DEFAULT_PLANS;
+
   return (
     <div className="max-w-6xl mx-auto py-12 px-4">
       <h2 className="text-3xl font-black text-center mb-12">Select Your Plan</h2>
       <div className="grid md:grid-cols-3 gap-8">
-        {plans.map(plan => {
+        {plansToRender.map(plan => {
           const isCurrent = currentPlan === plan.id;
           return (
             <div
@@ -60,8 +83,10 @@ const PlansSection = ({ user }: { user: any }) => {
                 )}
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                 <div className="flex items-baseline mb-6">
-                  <span className="text-4xl font-black">${plan.price}</span>
-                  <span className="text-gray-500 ml-2">/ month</span>
+                  <span className="text-4xl font-black">
+                    {plan.price === 0 ? "Gratis" : `$ ${plan.price.toLocaleString('es-CL')}`}
+                  </span>
+                  {plan.price !== 0 && <span className="text-gray-500 ml-2">/ mes</span>}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features?.map((feature: string, idx: number) => (
@@ -88,11 +113,6 @@ const PlansSection = ({ user }: { user: any }) => {
             </div>
           );
         })}
-        {plans.length === 0 && (
-            <div className="col-span-full py-12 text-center text-gray-500">
-                No plans found in Firestore yet.
-            </div>
-        )}
       </div>
     </div>
   );
