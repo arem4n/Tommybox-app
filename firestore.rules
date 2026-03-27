@@ -1,197 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: userId
-    // Fields:
-    //   - email: string
-    //   - username: string
-    //   - displayName: string (optional)
-    //   - isTrainer: bool
-    //   - createdAt: timestamp
-    //
-    // Collection: users/{userId}/metrics
-    // Document ID: metricId
-    // Fields:
-    //   - exercise: string
-    //   - load: number
-    //   - reps: number
-    //   - date: string
-    //   - timestamp: timestamp
-    //
-    // Collection: users/{userId}/observations
-    // Document ID: observationId
-    // Fields:
-    //   - comment: string
-    //   - date: string
-    //   - timestamp: timestamp
-    //
-    // Collection: users/{userId}/feelings
-    // Document ID: feelingId
-    // Fields:
-    //   - feeling: string
-    //   - date: string
-    //   - timestamp: timestamp
-    //
-    // Collection: users/{userId}/dailyTrackers
-    // Document ID: date (YYYY-MM-DD)
-    // Fields:
-    //   - userId: string
-    //   - date: string
-    //   - actions: map
-    //
-    // Collection: achievements, pendingAchievements, publicAchievements
-    // Document ID: achievementId
-    // Fields:
-    //   - text: string
-    //   - userEmail: string
-    //   - timestamp: timestamp
-    //
-    // Collection: redemptions
-    // Document ID: redemptionId
-    // Fields:
-    //   - userId: string
-    //   - rewardId: string
-    //   - rewardName: string
-    //   - type: string
-    //   - pointsSpent: number
-    //   - pricePaid: number
-    //   - status: string
-    //   - redeemedAt: timestamp
-    //
-    // ===============================================================
 
-    // Check if the user is authenticated
     function isAuthenticated() {
-       return request.auth != null;
+      return request.auth != null;
     }
-    
-    // Check if user owns the resource
+
     function isOwner(userId) {
-       return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
-    
-    // Check if user is a trainer
+
     function isTrainer() {
-      return isAuthenticated() && 
-        (
-          request.auth.token.email == "sergio.areman@gmail.com" ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTrainer == true)
-        );
+      return isAuthenticated() && (
+        request.auth.token.email == "sergio.areman@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTrainer == true)
+      );
     }
-    
-    // Validate string length
-    function validStringLength(field, minLen, maxLen) {
-       return request.resource.data[field] is string &&
-         request.resource.data[field].size() >= minLen &&
-         request.resource.data[field].size() <= maxLen;
-    }
-    
-    // Validate UserProfile
-    function isValidUserProfile() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['email', 'username', 'isTrainer', 'createdAt']) &&
-             data.email is string && data.email.size() > 0 && data.email.size() < 100 &&
-             data.username is string && data.username.size() > 0 && data.username.size() < 50 &&
-             data.isTrainer is bool &&
-             data.createdAt is timestamp;
-    }
-    
+
     match /users/{userId} {
-      allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
-      allow create: if isAuthenticated() && isOwner(userId) && isValidUserProfile() && (request.resource.data.isTrainer == false || isTrainer());
+      allow read, list: if isOwner(userId) || isTrainer();
+      allow create: if isAuthenticated() && isOwner(userId);
       allow update: if isAuthenticated() && (isOwner(userId) || isTrainer());
       allow delete: if isTrainer();
-      
+
       match /metrics/{metricId} {
         allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
         allow create, update, delete: if isTrainer();
       }
-      
+
       match /observations/{observationId} {
         allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
         allow create, update, delete: if isTrainer();
       }
-      
+
       match /sessions/{sessionId} {
         allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
         allow create, update, delete: if isTrainer();
       }
-      
+
       match /feelings/{feelingId} {
         allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
-        allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['feeling', 'date', 'timestamp']) &&
-                      validStringLength('feeling', 1, 1000) &&
-                      request.resource.data.date is string &&
-                      request.resource.data.timestamp is timestamp;
+        allow create: if isOwner(userId);
         allow update, delete: if isOwner(userId) || isTrainer();
       }
-      
+
       match /dailyTrackers/{date} {
         allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
         allow create, update: if isOwner(userId) || isTrainer();
         allow delete: if isTrainer();
       }
     }
-    
-    match /achievements/{achievementId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.keys().hasAll(['text', 'userEmail', 'timestamp']) &&
-                    validStringLength('text', 1, 500) &&
-                    validStringLength('userEmail', 1, 100) &&
-                    request.resource.data.timestamp is timestamp;
-      allow update, delete: if isTrainer();
-    }
-    
-    match /pendingAchievements/{achievementId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.keys().hasAll(['text', 'userEmail', 'timestamp']) &&
-                    validStringLength('text', 1, 500) &&
-                    validStringLength('userEmail', 1, 100) &&
-                    request.resource.data.timestamp is timestamp;
-      allow update, delete: if isTrainer();
-    }
-    
-    match /publicAchievements/{achievementId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isTrainer();
-    }
-    
-    match /redemptions/{redemptionId} {
-      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isTrainer());
-      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId || isTrainer()) &&
-                    request.resource.data.keys().hasAll(['userId', 'rewardId', 'rewardName', 'type', 'pointsSpent', 'pricePaid', 'status', 'redeemedAt']) &&
-                    request.resource.data.userId is string &&
-                    request.resource.data.rewardId is string &&
-                    request.resource.data.rewardName is string &&
-                    request.resource.data.type is string &&
-                    request.resource.data.pointsSpent is number &&
-                    request.resource.data.pricePaid is number &&
-                    request.resource.data.status is string &&
-                    request.resource.data.redeemedAt is timestamp;
-      allow update: if isTrainer();
-      allow delete: if isTrainer();
-    }
+
     match /agenda/{userId}/events/{eventId} {
       allow read: if isOwner(userId) || isTrainer();
-      allow list: if isTrainer();
-      allow create: if isOwner(userId) &&
-                    request.resource.data.keys().hasAll(['date', 'time', 'createdAt']) &&
-                    request.resource.data.date is string &&
-                    request.resource.data.time is string &&
-                    request.resource.data.createdAt is timestamp;
+      allow create: if isOwner(userId);
       allow delete: if isOwner(userId) || isTrainer();
       allow update: if isTrainer();
     }
@@ -200,20 +63,22 @@ service cloud.firestore {
       allow read: if isTrainer();
     }
 
+    match /bookedSlots/{slotId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.bookedBy == request.auth.uid;
+      allow delete: if isAuthenticated() && (resource.data.bookedBy == request.auth.uid || isTrainer());
+      allow update: if isTrainer();
+    }
+
     match /community/{postId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-                    request.resource.data.keys().hasAll(['authorId', 'displayName', 'content', 'createdAt']) &&
-                    request.resource.data.authorId == request.auth.uid &&
-                    request.resource.data.content is string &&
-                    request.resource.data.content.size() > 0 &&
-                    request.resource.data.content.size() <= 2000;
-      allow update: if isAuthenticated() &&
-                    (resource.data.authorId == request.auth.uid ||
-                    isTrainer() ||
-                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
-      allow delete: if isAuthenticated() &&
-                    (resource.data.authorId == request.auth.uid || isTrainer());
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.authorId == request.auth.uid ||
+        isTrainer() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+      );
+      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isTrainer());
     }
 
     match /plans/{planId} {

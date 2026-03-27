@@ -57,6 +57,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
             <span className="text-sm font-medium text-gray-600 hidden sm:block">
               {user?.displayName}
             </span>
+            {user?.photoURL ? (
+                <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full object-cover border-2 border-blue-100" />
+            ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm hidden sm:flex">
+                    {user?.displayName?.[0]?.toUpperCase() || '?'}
+                </div>
+            )}
             <button
               onClick={handleLogout}
               className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
@@ -94,7 +101,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
           {currentTab === 'agenda' && <AgendaSection user={user} />}
           {currentTab === 'community' && <CommunitySection user={user} />}
           {currentTab === 'plan' && <PlansSection user={user} />}
-          {currentTab === 'profile' && <ClientStatsView user={user} />}
+          {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => {}} />}
         </div>
       </main>
     </div>
