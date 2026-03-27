@@ -1,3 +1,4 @@
+cat << 'INNER_EOF' > components/ErrorBoundary.tsx
 import * as React from 'react';
 
 export class ErrorBoundary extends React.Component<any, any> {
@@ -49,3 +50,4 @@ export class ErrorBoundary extends React.Component<any, any> {
     return (this as any).props.children;
   }
 }
+INNER_EOF

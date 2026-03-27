@@ -1,10 +1,8 @@
+cat << 'INNER_EOF' > components/ErrorBoundary.tsx
 import * as React from 'react';
 
 export class ErrorBoundary extends React.Component<any, any> {
-  constructor(props: any) {
-    super(props);
-    (this as any).state = { hasError: false, error: null };
-  }
+  state: any = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
@@ -15,12 +13,11 @@ export class ErrorBoundary extends React.Component<any, any> {
   }
 
   render() {
-    const s = (this as any).state;
-    if (s && s.hasError) {
+    if (this.state.hasError) {
       let errorDetails = null;
       try {
-        if (s.error?.message) {
-            errorDetails = s.error.message;
+        if (this.state.error?.message) {
+            errorDetails = this.state.error.message;
         }
       } catch (e) {}
 
@@ -46,6 +43,7 @@ export class ErrorBoundary extends React.Component<any, any> {
       );
     }
 
-    return (this as any).props.children;
+    return this.props.children;
   }
 }
+INNER_EOF

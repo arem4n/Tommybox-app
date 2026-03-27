@@ -1,26 +1,38 @@
-import * as React from 'react';
+cat << 'INNER_EOF' > components/ErrorBoundary.tsx
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
-export class ErrorBoundary extends React.Component<any, any> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children?: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    (this as any).state = { hasError: false, error: null };
+    this.state = {
+      hasError: false,
+      error: null
+    };
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
   render() {
-    const s = (this as any).state;
-    if (s && s.hasError) {
+    if (this.state.hasError) {
       let errorDetails = null;
       try {
-        if (s.error?.message) {
-            errorDetails = s.error.message;
+        if (this.state.error?.message) {
+            errorDetails = this.state.error.message;
         }
       } catch (e) {}
 
@@ -46,6 +58,7 @@ export class ErrorBoundary extends React.Component<any, any> {
       );
     }
 
-    return (this as any).props.children;
+    return this.props.children;
   }
 }
+INNER_EOF

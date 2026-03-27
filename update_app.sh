@@ -1,3 +1,4 @@
+cat << 'INNER_EOF' > App.tsx
 import React, { useState, useEffect, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { User } from 'firebase/auth';
@@ -95,7 +96,7 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, [navigate]);
-  
+
   const handleLogin = async () => {
     try {
         await signIn();
@@ -110,9 +111,9 @@ const App: React.FC = () => {
         birthDate: additionalData.birthDate,
         registrationCompleted: true,
       };
-      
+
       await updateUserProfile(userToComplete.id, updatedData);
-      
+
       const updatedUser = { ...userToComplete, ...updatedData };
       setUser(updatedUser as any);
       setIsLoggedIn(true);
@@ -155,3 +156,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+INNER_EOF
