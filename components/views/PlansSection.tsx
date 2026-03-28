@@ -2,33 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Dumbbell, Zap, Award, CreditCard, Building2, X } from 'lucide-react';
+import { getPlanName } from '../../utils/plans';
 
 const DEFAULT_PLANS = [
   {
     id: 'plan_1',
-    name: '1 Sesión / Semana',
+    name: 'Starter',
     price: 70000,
-    description: 'Perfecto para establecer una base sólida. Incluye 4 sesiones al mes, distribuidas en una por semana.',
+    description: 'Para quien comienza su camino. 1 sesión semanal enfocada en técnica y base de movimiento.',
     icon: 'Dumbbell',
     featured: false,
+    sessionsPerWeek: 1,
     features: ['4 sesiones al mes', 'Programa personalizado', 'Seguimiento de progreso']
   },
   {
     id: 'plan_2',
-    name: '2 Sesiones / Semana',
+    name: 'Performance',
     price: 80000,
-    description: 'Ideal para un progreso constante. Incluye 8 sesiones al mes, distribuidas en dos por semana.',
+    description: 'Para quienes quieren avanzar con constancia. 2 sesiones semanales con seguimiento continuo.',
     icon: 'Zap',
     featured: true,
+    sessionsPerWeek: 2,
     features: ['8 sesiones al mes', 'Programa personalizado', 'Seguimiento de progreso', 'Chat con entrenador']
   },
   {
     id: 'plan_3',
-    name: '3 Sesiones / Semana',
+    name: 'Elite',
     price: 90000,
-    description: 'Para un compromiso total. Incluye 12 sesiones al mes, distribuidas en tres por semana.',
+    description: 'Máxima dedicación. 3 sesiones semanales para resultados avanzados.',
     icon: 'Award',
     featured: false,
+    sessionsPerWeek: 3,
     features: ['12 sesiones al mes', 'Programa personalizado', 'Seguimiento de progreso', 'Chat con entrenador', 'Acceso prioritario']
   },
 ];
@@ -136,7 +140,7 @@ const PlansSection = ({ user }: { user: any }) => {
               <div className="flex-1">
                 {renderIcon(plan.icon, isCurrent, isFeatured)}
 
-                <h3 className="text-2xl font-black text-gray-900 mb-2">{plan.name}</h3>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">{getPlanName(plan.id)}</h3>
                 <p className="text-gray-500 mb-6 min-h-[48px]">{plan.description}</p>
 
                 <div className="mb-8">
@@ -191,7 +195,7 @@ const PlansSection = ({ user }: { user: any }) => {
 
             <h2 className="text-3xl font-black text-gray-900 mb-2 text-center">Confirmar Plan</h2>
             <p className="text-center text-gray-500 font-medium text-lg mb-8">
-              {selectedPlanForPayment.name} — <span className="font-bold text-blue-600">${(selectedPlanForPayment.price/1000).toFixed(0)}.000</span>
+              {getPlanName(selectedPlanForPayment.id)} — <span className="font-bold text-blue-600">${(selectedPlanForPayment.price/1000).toFixed(0)}.000</span>
             </p>
 
             <div className="space-y-6">

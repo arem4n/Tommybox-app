@@ -1,363 +1,515 @@
-import React, { useState, useEffect } from 'react';
-import { db } from '../../services/firebase';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Calendar, Dumbbell, Zap, Star, Download } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { db, storage } from '../../services/firebase';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, AreaChart, Area
+} from 'recharts';
+import { Calendar, Dumbbell, Zap, Star, Camera, User, BarChart2, Heart, Download } from 'lucide-react';
+import { getPlanName } from '../../utils/plans';
 
 interface Props {
   user: any;
   onUserUpdate: (updated: any) => void;
 }
 
+const FEELING_OPTIONS = [
+  { emoji: '🔥', label: 'Excelente', value: 5 },
+  { emoji: '💪', label: 'Muy bien', value: 4 },
+  { emoji: '😊', label: 'Bien',     value: 3 },
+  { emoji: '😐', label: 'Regular',  value: 2 },
+  { emoji: '😓', label: 'Cansado',  value: 1 },
+];
+
+const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
 const ClientStatsView = ({ user, onUserUpdate }: Props) => {
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState<any[]>([]);
-  const [selectedExercise, setSelectedExercise] = useState<string>('');
+  const [sessions, setSessions]       = useState<any[]>([]);
+  const [metrics, setMetrics]         = useState<any[]>([]);
+  const [feelings, setFeelings]       = useState<any[]>([]);
+  const [selectedExercise, setSelectedExercise] = useState('');
+  const [activeTab, setActiveTab]     = useState<'stats'|'progress'|'feelings'|'profile'>('stats');
 
-  // Profile Editor State
-  const [editName, setEditName] = useState(user?.displayName || '');
-  const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState('');
+  // Profile state
+  const [editName, setEditName]       = useState(user?.displayName || '');
+  const [editPhone, setEditPhone]     = useState(user?.phone || '');
+  const [editBirthdate, setEditBirthdate] = useState(user?.birthDate || '');
+  const [photoURL, setPhotoURL]       = useState(user?.photoURL || '');
+  const [uploading, setUploading]     = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [saving, setSaving]           = useState(false);
+  const [saveMsg, setSaveMsg]         = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'Estadísticas' | 'Rendimiento' | 'Perfil'>('Estadísticas');
+  // Feeling form state
+  const [feelingDate, setFeelingDate]         = useState(new Date().toISOString().split('T')[0]);
+  const [feelingSelected, setFeelingSelected] = useState<number | null>(null);
+  const [feelingText, setFeelingText]         = useState('');
+  const [savingFeeling, setSavingFeeling]     = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
-
-    // Subscribe to sessions
-    const qSessions = query(collection(db, `agenda/${user.id}/events`));
-    const unsubSessions = onSnapshot(qSessions, (snapshot) => {
-      setSessions(snapshot.docs.map(d => d.data()));
+    const unsubS = onSnapshot(query(collection(db, `agenda/${user.id}/events`)), snap => {
+      setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-
-    // Subscribe to metrics
-    const qMetrics = query(collection(db, `users/${user.id}/metrics`), orderBy('date', 'asc'));
-    const unsubMetrics = onSnapshot(qMetrics, (snapshot) => {
-      const fetchedMetrics = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      // ensure descending order for the table
-      const sortedMetrics = [...fetchedMetrics].sort((a,b) => (b as any).date.localeCompare((a as any).date));
-      setMetrics(sortedMetrics);
-
-      // Auto-select first exercise if not set
-      if (fetchedMetrics.length > 0) {
-         const uniqueExercises = Array.from(new Set(fetchedMetrics.map(m => (m as any).exercise)));
-         if (uniqueExercises.length > 0 && !selectedExercise) {
-             setSelectedExercise(uniqueExercises[0] as string);
-         }
+    const unsubM = onSnapshot(
+      query(collection(db, `users/${user.id}/metrics`), orderBy('date', 'asc')),
+      snap => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setMetrics(data);
+        if (data.length > 0 && !selectedExercise) {
+          const uniq = Array.from(new Set(data.map((m: any) => m.exercise)));
+          setSelectedExercise(uniq[0] as string);
+        }
       }
-    });
-
-    return () => {
-      unsubSessions();
-      unsubMetrics();
-    };
+    );
+    const unsubF = onSnapshot(
+      query(collection(db, `users/${user.id}/feelings`), orderBy('date', 'desc')),
+      snap => setFeelings(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    return () => { unsubS(); unsubM(); unsubF(); };
   }, [user?.id]);
 
-  // Derived Stats
-  const totalSessions = sessions.length;
+  // ── Derived stats ──────────────────────────────────────────────────────────
   const today = new Date();
-  const currentYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const thisMonthSessions = sessions.filter(s => {
-      const dateStr = s.date?.toDate ? s.date.toDate().toISOString() : s.date;
-      return dateStr?.startsWith(currentYearMonth);
-  }).length;
-
   const todayStr = today.toISOString().split('T')[0];
-  const futureSessions = sessions
-      .filter(s => {
-          const dateStr = s.date?.toDate ? s.date.toDate().toISOString().split('T')[0] : s.date;
-          return dateStr >= todayStr;
-      })
-      .sort((a, b) => {
-          const dateA = a.date?.toDate ? a.date.toDate().toISOString() : a.date;
-          const dateB = b.date?.toDate ? b.date.toDate().toISOString() : b.date;
-          return dateA.localeCompare(dateB);
-      });
-  const nextSession = futureSessions[0];
-  const nextSessionLabel = nextSession
-      ? `${nextSession.date?.toDate ? nextSession.date.toDate().toISOString().split('T')[0] : nextSession.date} ${nextSession.time || ''}`
-      : 'Sin agendar';
+  const currentYM = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
 
-  const currentPlan = user?.plan || 'Sin plan';
+  const totalSessions   = sessions.length;
+  const thisMonthCount  = sessions.filter(s => (s.date || '').startsWith(currentYM)).length;
+  const nextSession     = sessions
+    .filter(s => {
+        const dateStr = s.date?.toDate ? s.date.toDate().toISOString().split('T')[0] : s.date;
+        return dateStr >= todayStr;
+    })
+    .sort((a,b) => {
+        const dateA = a.date?.toDate ? a.date.toDate().toISOString() : a.date;
+        const dateB = b.date?.toDate ? b.date.toDate().toISOString() : b.date;
+        return dateA.localeCompare(dateB);
+    })[0];
 
-  // Group sessions by month for BarChart
-  const exportToCSV = () => {
-  if (metrics.length === 0) return;
-  const header = 'Fecha,Ejercicio,Carga (kg),Reps,RPE\n';
-  const rows = metrics.map((m: any) => `${m.date},${m.exercise},${m.load},${m.reps},${m.rpe || ''}`).join('\n');
-  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `tommybox_mis_metricas.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-const groupSessionsByMonth = (sessionsArr: any[]) => {
-      const counts: Record<string, number> = {};
-      sessionsArr.forEach(s => {
-          const dateObj = s.date?.toDate ? s.date.toDate() : new Date(s.date);
-          if (isNaN(dateObj.getTime())) return;
-          const monthName = dateObj.toLocaleString('es-ES', { month: 'short' });
-          const key = `${monthName} ${dateObj.getFullYear()}`;
-          counts[key] = (counts[key] || 0) + 1;
-      });
-      return Object.entries(counts).map(([month, count]) => ({ month, sesiones: count }));
-  };
-  const sessionsByMonth = groupSessionsByMonth(sessions);
-
-  const uniqueExercises = Array.from(new Set(metrics.map(m => (m as any).exercise)));
-
-  // Sort ascending for chart
-  const filteredMetrics = [...metrics]
-      .filter(m => (m as any).exercise === selectedExercise)
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-  const handleSaveProfile = async () => {
-  if (!editName.trim() || !user?.id) return;
-  setSaving(true);
-  setSaveMsg('');
-  try {
-    await updateDoc(doc(db, 'users', user.id), {
-      displayName: editName.trim(),
-      photoURL: photoURL.trim() || null,
+  // Sessions grouped by last 6 months
+  const sessionsByMonth = (() => {
+    const map: Record<string, number> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      map[key] = 0;
+    }
+    sessions.forEach(s => {
+      const dateStr = s.date?.toDate ? s.date.toDate().toISOString() : s.date;
+      if (dateStr && map[dateStr.slice(0,7)] !== undefined) map[dateStr.slice(0,7)]++;
     });
-    // Update local state to reflect immediately
-    onUserUpdate({ ...user, displayName: editName.trim(), photoURL: photoURL.trim() || null });
-    setSaveMsg('¡Perfil actualizado correctamente!');
-    setTimeout(() => setSaveMsg(''), 3000);
-  } catch (e) {
-    console.error(e);
-    setSaveMsg('Error al guardar. Intenta de nuevo.');
-  } finally {
-    setSaving(false);
-  }
-};
+    return Object.entries(map).map(([k, v]) => ({
+      month: MONTH_NAMES[parseInt(k.split('-')[1]) - 1],
+      sesiones: v,
+    }));
+  })();
+
+  // Metrics filtered by exercise
+  const filteredMetrics = [...metrics].filter((m: any) => m.exercise === selectedExercise).sort((a, b) => a.date.localeCompare(b.date));
+  const uniqueExercises = Array.from(new Set(metrics.map((m: any) => m.exercise)));
+
+  // Feelings chart data (last 30 days, one point per day)
+  const feelingsChartData = (() => {
+    const map: Record<string, number> = {};
+    feelings.forEach(f => { map[f.date] = f.value; });
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-14)
+      .map(([date, value]) => ({
+        date: date.slice(5),
+        estado: value,
+        emoji: FEELING_OPTIONS.find(o => o.value === value)?.emoji || '',
+      }));
+  })();
+
+  // ── Photo upload ────────────────────────────────────────────────────────────
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !storage) return;
+    setUploading(true);
+    setUploadProgress(0);
+    const storageRef = ref(storage, `avatars/${user.id}/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    task.on('state_changed',
+      snap => setUploadProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
+      err => { console.error(err); setUploading(false); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setPhotoURL(url);
+        setUploading(false);
+        // Auto-save photo to Firestore immediately
+        await updateDoc(doc(db, 'users', user.id), { photoURL: url });
+        onUserUpdate({ ...user, photoURL: url });
+      }
+    );
+  };
+
+  // ── Save profile ────────────────────────────────────────────────────────────
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) return;
+    setSaving(true);
+    setSaveMsg('');
+    try {
+      const updates: any = {
+        displayName: editName.trim(),
+        phone: editPhone.trim() || null,
+        birthDate: editBirthdate || null,
+      };
+      if (photoURL) updates.photoURL = photoURL;
+      await updateDoc(doc(db, 'users', user.id), updates);
+      onUserUpdate({ ...user, ...updates });
+      setSaveMsg('¡Perfil actualizado!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (e) {
+      setSaveMsg('Error al guardar. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Save feeling ────────────────────────────────────────────────────────────
+  const handleSaveFeeling = async () => {
+    if (feelingSelected === null || !feelingDate) return;
+    setSavingFeeling(true);
+    try {
+      await addDoc(collection(db, `users/${user.id}/feelings`), {
+        date: feelingDate,
+        value: feelingSelected,
+        emoji: FEELING_OPTIONS.find(o => o.value === feelingSelected)?.emoji || '',
+        text: feelingText.trim() || null,
+        timestamp: Timestamp.now(),
+      });
+      setFeelingSelected(null);
+      setFeelingText('');
+      setFeelingDate(new Date().toISOString().split('T')[0]);
+    } finally {
+      setSavingFeeling(false);
+    }
+  };
+
+  // ── CSV Export ─────────────────────────────────────────────────────────────
+  const exportToCSV = () => {
+    if (metrics.length === 0) return;
+    const header = 'Fecha,Ejercicio,Carga (kg),Reps,RPE\n';
+    const rows = metrics.map((m: any) => `${m.date},${m.exercise},${m.load},${m.reps},${m.rpe || ''}`).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tommybox_mis_metricas.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── Custom tooltip for feelings chart ──────────────────────────────────────
+  const FeelingTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const f = FEELING_OPTIONS.find(o => o.value === payload[0].value);
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-lg text-sm">
+        <p className="font-bold">{payload[0].payload.date}</p>
+        <p>{f?.emoji} {f?.label}</p>
+      </div>
+    );
+  };
+
+  const tabItems = [
+    { id: 'stats',    icon: BarChart2, label: 'Stats' },
+    { id: 'progress', icon: Dumbbell,  label: 'Progreso' },
+    { id: 'feelings', icon: Heart,     label: 'Sensaciones' },
+    { id: 'profile',  icon: User,      label: 'Perfil' },
+  ];
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in min-h-screen py-4">
-        <div className="flex border-b border-gray-200 mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
-  {(['Estadísticas', 'Rendimiento', 'Perfil'] as const).map(tab => (
-    <button
-      key={tab}
-      onClick={() => setActiveTab(tab)}
-      className={`flex-1 py-3 text-sm font-medium transition-colors ${
-        activeTab === tab
-          ? 'bg-blue-600 text-white'
-          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-      }`}
-    >
-      {tab}
-    </button>
-  ))}
-</div>
+    <div className="max-w-6xl mx-auto py-4 min-h-screen animate-fade-in">
+      {/* Internal tab bar */}
+      <div className="flex rounded-xl overflow-hidden border border-gray-200 mb-6 bg-white shadow-sm">
+        {tabItems.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+            className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 py-3 text-xs sm:text-sm font-semibold transition-colors ${
+              activeTab === t.id ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'
+            }`}>
+            <t.icon size={16} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {activeTab === 'Estadísticas' && (
-            <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                        <div className="p-3 bg-blue-100 text-blue-600 rounded-full mb-3"><Dumbbell size={24} /></div>
-                        <p className="text-gray-500 text-sm font-medium mb-1">Total Sesiones</p>
-                        <p className="text-3xl font-black text-gray-900">{totalSessions}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                        <div className="p-3 bg-green-100 text-green-600 rounded-full mb-3"><Calendar size={24} /></div>
-                        <p className="text-gray-500 text-sm font-medium mb-1">Este Mes</p>
-                        <p className="text-3xl font-black text-gray-900">{thisMonthSessions}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                        <div className="p-3 bg-purple-100 text-purple-600 rounded-full mb-3"><Zap size={24} /></div>
-                        <p className="text-gray-500 text-sm font-medium mb-1">Próxima Sesión</p>
-                        <p className="text-lg font-bold text-gray-900 break-words w-full">{nextSessionLabel}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                        <div className="p-3 bg-yellow-100 text-yellow-600 rounded-full mb-3"><Star size={24} /></div>
-                        <p className="text-gray-500 text-sm font-medium mb-1">Plan Actual</p>
-                        <p className="text-lg font-bold text-gray-900 uppercase tracking-wide">{currentPlan}</p>
-                    </div>
-                </div>
+      {/* ── STATS ── */}
+      {activeTab === 'stats' && (
+        <>
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[
+              { icon: '🥊', label: 'Total sesiones', value: totalSessions },
+              { icon: '📅', label: 'Este mes',        value: thisMonthCount },
+              { icon: '⚡', label: 'Próxima sesión',  value: nextSession ? `${nextSession.date} ${nextSession.time || ''}` : 'Sin agendar' },
+              { icon: '🏷️', label: 'Plan',            value: getPlanName(user?.plan || 'free') },
+            ].map((card, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-1 text-center">
+                <span className="text-2xl">{card.icon}</span>
+                <span className="text-xs text-gray-500 font-medium">{card.label}</span>
+                <span className="font-black text-gray-900 text-sm leading-tight break-words">{card.value}</span>
+              </div>
+            ))}
+          </div>
 
-                <div className="flex justify-end mb-4">
-  <button onClick={exportToCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
-    <Download size={16} /> Descargar CSV
-  </button>
-</div>
-<div className="grid lg:grid-cols-2 gap-8">
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Sesiones por mes</h3>
-                        {sessionsByMonth.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={sessionsByMonth}>
-  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-  <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-  <YAxis allowDecimals={false} tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
-  <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-  <Bar dataKey="sesiones" fill="#2563eb" radius={[4,4,0,0]} isAnimationActive={true} animationDuration={800} />
-</BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-[220px] flex items-center justify-center text-gray-400">Sin datos de sesiones.</div>
-                        )}
-                    </div>
+          {/* Sessions by month chart */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <h3 className="text-base font-black text-gray-900 mb-4">Sesiones por mes</h3>
+            {sessionsByMonth.every(d => d.sesiones === 0) ? (
+              <p className="text-gray-400 text-sm text-center py-8">Aún no tienes sesiones registradas.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={sessionsByMonth} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+                    cursor={{ fill: '#f8fafc' }}
+                  />
+                  <Bar dataKey="sesiones" fill="#2563eb" radius={[4,4,0,0]}
+                    isAnimationActive={true} animationDuration={800} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </>
+      )}
 
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">Progresión de carga</h3>
-                            {uniqueExercises.length > 0 && (
-                                <select
-                                    value={selectedExercise}
-                                    onChange={(e) => setSelectedExercise(e.target.value)}
-                                    className="bg-gray-50 border border-gray-200 text-sm rounded-lg px-3 py-1.5 focus:ring-blue-500 outline-none"
-                                >
-                                    {uniqueExercises.map(ex => (
-                                        <option key={ex as string} value={ex as string}>{ex}</option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
-
-                        {filteredMetrics.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={220}>
-                            <AreaChart data={filteredMetrics}>
-  <defs>
-    <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-    </linearGradient>
-  </defs>
-  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-  <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-  <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} unit=" kg" axisLine={false} tickLine={false} />
-  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-  <Area type="monotone" dataKey="load" name="Carga" stroke="#2563eb" fillOpacity={1} fill="url(#colorLoad)" strokeWidth={3} activeDot={{ r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }} isAnimationActive={true} animationDuration={1000} />
-</AreaChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-[220px] flex items-center justify-center text-gray-400 text-center">
-                                No hay métricas registradas.<br/>El entrenador actualizará tu progreso pronto.
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </>
-        )}
-
-        {activeTab === 'Rendimiento' && (
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                                <th className="p-4 font-bold border-b border-gray-100">Fecha</th>
-                                <th className="p-4 font-bold border-b border-gray-100">Ejercicio</th>
-                                <th className="p-4 font-bold border-b border-gray-100">Carga (kg)</th>
-                                <th className="p-4 font-bold border-b border-gray-100">Reps</th>
-                                <th className="p-4 font-bold border-b border-gray-100">RPE</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {metrics.map(m => (
-                                <tr key={m.id} className="hover:bg-blue-50/30 transition-colors">
-                                    <td className="p-4 text-sm text-gray-900">{m.date}</td>
-                                    <td className="p-4 text-sm font-bold text-gray-900">{m.exercise}</td>
-                                    <td className="p-4 text-sm text-gray-700 font-medium">{m.load} kg</td>
-                                    <td className="p-4 text-sm text-gray-700">{m.reps}</td>
-                                    <td className="p-4 text-sm text-gray-500">{m.rpe || '-'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {metrics.length === 0 && (
-                        <div className="p-12 text-center text-gray-500">Tu entrenador aún no ha registrado datos de rendimiento.</div>
-                    )}
-                </div>
+      {/* ── PROGRESS ── */}
+      {activeTab === 'progress' && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <h3 className="text-base font-black text-gray-900">Progresión de carga</h3>
+            <div className="flex items-center gap-2">
+                {uniqueExercises.length > 0 && (
+                  <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)}
+                    className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                    {uniqueExercises.map(ex => (
+                      <option key={ex as string} value={ex as string}>{ex as string}</option>
+                    ))}
+                  </select>
+                )}
+                <button onClick={exportToCSV} className="flex items-center justify-center p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors" title="Descargar CSV">
+                    <Download size={18} />
+                </button>
             </div>
-        )}
+          </div>
+          {filteredMetrics.length < 2 ? (
+            <p className="text-gray-400 text-sm text-center py-12">
+              {metrics.length === 0
+                ? 'Tu entrenador aún no ha registrado datos de rendimiento.'
+                : 'Se necesitan al menos 2 registros para mostrar la progresión.'}
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={filteredMetrics} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                <defs>
+                    <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} unit=" kg" axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+                  formatter={(value: any) => [`${value} kg`, 'Carga']}
+                />
+                <Area type="monotone" dataKey="load" name="Carga" stroke="#2563eb" strokeWidth={3} fill="url(#colorLoad)"
+                  activeDot={{ r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }}
+                  isAnimationActive={true} animationDuration={1000} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
 
-        {activeTab === 'Perfil' && (
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-2xl mx-auto mt-4">
-                 <h2 className="text-2xl font-black text-gray-900 mb-8 text-center">Editar Perfil</h2>
+          {/* Metrics table */}
+          {metrics.length > 0 && (
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {['Fecha', 'Ejercicio', 'Carga', 'Reps', 'RPE'].map(h => (
+                      <th key={h} className="text-left py-2 px-2 text-xs text-gray-400 font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...metrics].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10).map((m: any) => (
+                    <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="py-2 px-2 text-gray-600 text-xs">{m.date}</td>
+                      <td className="py-2 px-2 font-medium">{m.exercise}</td>
+                      <td className="py-2 px-2">{m.load} kg</td>
+                      <td className="py-2 px-2">{m.reps}</td>
+                      <td className="py-2 px-2 text-gray-500">{m.rpe || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
-                 <div className="flex flex-col items-center mb-8">
-                     <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center mb-4 border-4 border-white shadow-lg">
-                       {photoURL ? (
-                         <img src={photoURL} alt="avatar" className="w-full h-full object-cover" />
-                       ) : (
-                         <span className="text-4xl font-black text-blue-600">
-                           {editName?.[0]?.toUpperCase() || '?'}
-                         </span>
-                       )}
-                     </div>
+      {/* ── FEELINGS ── */}
+      {activeTab === 'feelings' && (
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 h-fit">
+            <h3 className="text-base font-black text-gray-900 mb-4">¿Cómo te sentiste hoy?</h3>
+            <div className="flex justify-between gap-2 mb-4">
+              {FEELING_OPTIONS.map(opt => (
+                <button key={opt.value} onClick={() => setFeelingSelected(opt.value)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border-2 transition-all ${
+                    feelingSelected === opt.value
+                      ? 'border-blue-500 bg-blue-50 scale-105'
+                      : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                  }`}>
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <span className="text-[10px] text-gray-500 font-bold hidden sm:inline">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feelingText}
+              onChange={e => setFeelingText(e.target.value)}
+              placeholder="Comentario opcional sobre tu sesión..."
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-3"
+            />
+            <div className="flex gap-3 items-center">
+              <input type="date" value={feelingDate} onChange={e => setFeelingDate(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <button onClick={handleSaveFeeling} disabled={feelingSelected === null || savingFeeling}
+                className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-600/20">
+                {savingFeeling ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
 
-                     <div className="w-full max-w-sm">
-                       <label className="block text-xs font-medium text-gray-500 mb-1">
-                         URL de foto de perfil
-                       </label>
-                       <input
-                         type="url"
-                         value={photoURL}
-                         onChange={e => setPhotoURL(e.target.value)}
-                         placeholder="https://... (pega un enlace a tu foto)"
-                         className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
-                       />
-                       <p className="text-xs text-gray-400 mt-1">
-                         Puedes usar una foto de Google, Instagram, etc.
-                       </p>
-                     </div>
-                 </div>
+          <div>
+          {/* Feelings chart */}
+          {feelingsChartData.length > 1 && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <h3 className="text-base font-black text-gray-900 mb-4">Tendencia de ánimo</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={feelingsChartData} margin={{ top: 5, right: 5, bottom: 5, left: -30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[1, 5]} ticks={[1,2,3,4,5]} tick={{ fontSize: 14 }} axisLine={false} tickLine={false}
+                    tickFormatter={v => FEELING_OPTIONS.find(o => o.value === v)?.emoji || ''} />
+                  <Tooltip content={<FeelingTooltip />} cursor={{ stroke: '#f0f0f0', strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="estado" stroke="#eab308" strokeWidth={3}
+                    dot={{ r: 5, fill: '#eab308', strokeWidth: 0 }}
+                    activeDot={{ r: 7 }}
+                    isAnimationActive={true} animationDuration={1000} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
-                 <div className="mb-6 max-w-sm mx-auto">
-                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                     Nombre o apodo
-                   </label>
-                   <input
-                     type="text"
-                     value={editName}
-                     onChange={e => setEditName(e.target.value)}
-                     maxLength={30}
-                     placeholder="¿Cómo quieres que te llamemos?"
-                     className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
-                   />
-                   <p className="text-xs text-gray-400 mt-1">{editName.length}/30 caracteres</p>
-                 </div>
+          {/* Feelings history list */}
+          {feelings.length > 0 && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-base font-black text-gray-900 mb-4">Historial</h3>
+              <div className="space-y-3">
+                {feelings.slice(0, 5).map(f => (
+                  <div key={f.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">
+                      {f.emoji}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 mb-0.5">{f.date}</p>
+                      {f.text && <p className="text-sm font-medium text-gray-800">{f.text}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          </div>
+        </div>
+      )}
 
-                 <div className="max-w-sm mx-auto space-y-2 mb-8">
-                   <div className="flex justify-between text-sm">
-                     <span className="text-gray-500">Email</span>
-                     <span className="font-medium text-gray-800">{user?.email}</span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-gray-500">Plan activo</span>
-                     <span className="font-medium text-blue-600">{user?.plan || 'Sin plan'}</span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-gray-500">Miembro desde</span>
-                     <span className="font-medium text-gray-800">
-                       {user?.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString('es-CL') : '—'}
-                     </span>
-                   </div>
-                 </div>
+      {/* ── PROFILE ── */}
+      {activeTab === 'profile' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-lg mx-auto">
+          <h2 className="text-2xl font-black text-gray-900 mb-8 text-center">Editar Perfil</h2>
 
-                 <div className="max-w-sm mx-auto">
-                   <button
-                     onClick={handleSaveProfile}
-                     disabled={saving}
-                     className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                   >
-                     {saving ? 'Guardando...' : 'Guardar cambios'}
-                   </button>
-                   {saveMsg && (
-  <p className={`text-center text-sm mt-3 font-medium ${
-    saveMsg.includes('Error') ? 'text-red-600' : 'text-green-600'
-  }`}>
-    {saveMsg}
-  </p>
-)}
-                 </div>
-             </div>
-        )}
+          {/* Avatar upload */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="relative w-24 h-24 mb-4">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 border-4 border-white shadow-lg flex items-center justify-center">
+                {photoURL ? (
+                  <img src={photoURL} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-4xl font-black text-blue-600">
+                    {editName?.[0]?.toUpperCase() || '?'}
+                  </span>
+                )}
+              </div>
+              <button onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors">
+                <Camera size={14} />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
+                className="hidden" onChange={handlePhotoUpload} />
+            </div>
+            {uploading && (
+              <div className="w-full max-w-xs mt-2">
+                <div className="flex justify-between text-xs text-gray-500 mb-1 font-bold">
+                  <span>Subiendo foto...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Form fields */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Nombre o apodo *</label>
+              <input type="text" value={editName} onChange={e => setEditName(e.target.value)} maxLength={30} placeholder="¿Cómo quieres que te llamemos?" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono</label>
+              <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+56 9 xxxx xxxx" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Fecha de nacimiento</label>
+              <input type="date" value={editBirthdate} onChange={e => setEditBirthdate(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-gray-700" />
+            </div>
+
+            {/* Read-only fields */}
+            <div className="pt-4 border-t border-gray-100">
+              <label className="block text-sm font-bold text-gray-400 mb-1">Email</label>
+              <input type="email" value={user?.email || ''} disabled className="w-full px-4 py-3 border border-gray-100 rounded-xl bg-gray-50 text-gray-400 text-sm font-medium cursor-not-allowed" />
+            </div>
+            <div className="flex justify-between items-center py-2 bg-blue-50/50 px-4 rounded-xl border border-blue-100">
+              <span className="text-sm font-bold text-gray-600">Plan activo</span>
+              <span className="font-black text-blue-700 text-sm uppercase tracking-wide">{getPlanName(user?.plan || 'free')}</span>
+            </div>
+          </div>
+
+          <button onClick={handleSaveProfile} disabled={saving || uploading}
+            className="w-full mt-8 py-3.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-black disabled:opacity-50 transition-colors shadow-lg">
+            {saving ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+          {saveMsg && (
+            <p className={`text-center text-sm mt-3 font-bold ${saveMsg.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+              {saveMsg}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

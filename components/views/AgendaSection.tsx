@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Lock, Calendar, Check, Users } from 'lucide-react';
+import { getPlanLimit, getPlanName } from '../../utils/plans';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc } from 'firebase/firestore';
 
@@ -34,6 +35,7 @@ const AgendaSection = ({ user }: { user: any }) => {
 
   const [bookedSessions, setBookedSessions] = useState<(Session & { clientName?: string })[]>([]);
   const [takenSlots, setTakenSlots] = useState<{[key: string]: boolean}>({});
+  const [weeklyCount, setWeeklyCount] = useState(0);
 
   const isTrainer = user?.isTrainer;
   const userPlan = user?.plan;
@@ -84,6 +86,17 @@ const AgendaSection = ({ user }: { user: any }) => {
       const q = query(collection(db, `agenda/${user.id}/events`));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setBookedSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+
+        const startOfCurrentWeek = getStartOfWeek(new Date());
+        const endOfCurrentWeek = new Date(startOfCurrentWeek);
+        endOfCurrentWeek.setDate(endOfCurrentWeek.getDate() + 6);
+        const startStr = startOfCurrentWeek.toISOString().split('T')[0];
+        const endStr = endOfCurrentWeek.toISOString().split('T')[0];
+        const count = snapshot.docs.filter(d => {
+          const date = d.data().date;
+          return date >= startStr && date <= endStr;
+        }).length;
+        setWeeklyCount(count);
       });
       return () => unsubscribe();
     }
@@ -173,6 +186,17 @@ const AgendaSection = ({ user }: { user: any }) => {
                message: "Necesitas un plan activo para agendar sesiones."
            });
            return;
+      }
+
+      const weekLimit = getPlanLimit(userPlan || 'free');
+      if (!isTrainer && weekLimit > 0 && weeklyCount >= weekLimit) {
+        setModal({
+          type: 'limit',
+          sessionTime: time,
+          sessionDay: dayIndex,
+          message: `Tu plan ${getPlanName(userPlan)} incluye ${weekLimit} sesión${weekLimit > 1 ? 'es' : ''} por semana. Ya alcanzaste el límite para esta semana.`
+        });
+        return;
       }
 
       setModal({
@@ -303,6 +327,18 @@ const AgendaSection = ({ user }: { user: any }) => {
                </p>
            </div>
 
+           {!isTrainer && (
+  <div className="flex flex-col items-center justify-center mb-4 sm:mb-0 sm:mr-4">
+    <span className="text-xs text-gray-500 mb-1">Sesiones esta semana:</span>
+    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+      weeklyCount >= getPlanLimit(userPlan || 'free')
+        ? 'bg-red-100 text-red-600'
+        : 'bg-blue-100 text-blue-700'
+    }`}>
+      {weeklyCount} / {getPlanLimit(userPlan || 'free')}
+    </span>
+  </div>
+)}
            <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-xl">
                <button onClick={() => changeWeek(-1)} className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-gray-600">
                    <ChevronLeft size={20} />
@@ -366,6 +402,22 @@ const AgendaSection = ({ user }: { user: any }) => {
                    >
                        <X size={20} />
                    </button>
+
+                   {modal.type === 'limit' && (
+  <div className="text-center">
+    <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+      <Lock size={28} className="text-amber-500" />
+    </div>
+    <h3 className="text-lg font-black text-gray-900 mb-2">Límite semanal alcanzado</h3>
+    <p className="text-gray-500 text-sm mb-6">{modal.message}</p>
+    <button
+      onClick={() => setModal({ type: 'none', sessionTime: '', sessionDay: null })}
+      className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+    >
+      Entendido
+    </button>
+  </div>
+)}
 
                    {modal.type === 'no-plan' && (
                        <div className="text-center">
