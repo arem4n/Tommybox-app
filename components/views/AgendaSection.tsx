@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Lock, Calendar, Check, Users } from 'lucide-react';
 import { db } from '../../services/firebase';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc } from 'firebase/firestore';
 
 interface Session {
   id: string;
@@ -33,9 +33,23 @@ const AgendaSection = ({ user }: { user: any }) => {
   }>({ type: 'none', sessionTime: '', sessionDay: null });
 
   const [bookedSessions, setBookedSessions] = useState<(Session & { clientName?: string })[]>([]);
+  const [takenSlots, setTakenSlots] = useState<{[key: string]: boolean}>({});
 
   const isTrainer = user?.isTrainer;
   const userPlan = user?.plan;
+
+  useEffect(() => {
+    const q = query(collection(db, 'bookedSlots'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const taken: {[key: string]: boolean} = {};
+      snapshot.docs.forEach(d => {
+        const data = d.data();
+        taken[`${data.date}_${data.time}`] = true;
+      });
+      setTakenSlots(taken);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -170,33 +184,48 @@ const AgendaSection = ({ user }: { user: any }) => {
   };
 
   const confirmBooking = async () => {
-      if (user?.id && modal.sessionDay !== null) {
-           const slotDate = new Date(startOfWeek);
-           slotDate.setDate(slotDate.getDate() + modal.sessionDay);
-           const dateStr = slotDate.toISOString().split('T')[0];
+    if (user?.id && modal.sessionDay !== null) {
+      const slotDate = new Date(startOfWeek);
+      slotDate.setDate(slotDate.getDate() + modal.sessionDay);
+      const dateStr = slotDate.toISOString().split('T')[0];
+      const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
 
-           try {
-               await addDoc(collection(db, `agenda/${user.id}/events`), {
-                   date: dateStr,
-                   time: modal.sessionTime,
-                   createdAt: Timestamp.now()
-               });
-               setModal({ ...modal, type: 'success' });
-           } catch(e) {
-               console.error(e);
-           }
+      try {
+        await addDoc(collection(db, `agenda/${user.id}/events`), {
+          date: dateStr,
+          time: modal.sessionTime,
+          createdAt: Timestamp.now()
+        });
+
+        await setDoc(doc(db, 'bookedSlots', slotId), {
+          date: dateStr,
+          time: modal.sessionTime,
+          bookedBy: user.id,
+          createdAt: Timestamp.now()
+        });
+
+        setModal({ ...modal, type: 'success' });
+      } catch(e) {
+        console.error(e);
       }
+    }
   };
 
   const cancelBooking = async () => {
-      if (user?.id && modal.existingSessionId) {
-          try {
-              await deleteDoc(doc(db, `agenda/${user.id}/events`, modal.existingSessionId));
-              setModal({ ...modal, type: 'none' });
-          } catch(e) {
-              console.error(e);
-          }
+    if (user?.id && modal.existingSessionId && modal.sessionDay !== null) {
+      const slotDate = new Date(startOfWeek);
+      slotDate.setDate(slotDate.getDate() + modal.sessionDay);
+      const dateStr = slotDate.toISOString().split('T')[0];
+      const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
+
+      try {
+        await deleteDoc(doc(db, `agenda/${user.id}/events`, modal.existingSessionId));
+        await deleteDoc(doc(db, 'bookedSlots', slotId));
+        setModal({ ...modal, type: 'none' });
+      } catch(e) {
+        console.error(e);
       }
+    }
   }
 
   const renderCell = (dayIndex: number, time: string) => {
@@ -209,28 +238,39 @@ const AgendaSection = ({ user }: { user: any }) => {
       const myBooking = !isTrainer && bookedSessions.find(s => s.date === dateStr && s.time === time);
       const trainerBooking = isTrainer && bookedSessions.find(s => s.date === dateStr && s.time === time);
 
+      const slotKey = `${dateStr}_${time}`;
+      const isTakenByOther = !isTrainer && !myBooking && takenSlots[slotKey];
+
       let cellClass = "border border-gray-100 p-2 h-14 sm:h-20 transition-all cursor-pointer relative flex flex-col items-center justify-center ";
 
       if (isPast) {
-          cellClass += "bg-gray-100 text-gray-300 cursor-not-allowed";
+          cellClass += 'bg-gray-100 text-gray-300 cursor-not-allowed';
       } else if (myBooking) {
-          cellClass += "bg-blue-100 border-blue-200 hover:bg-blue-200";
+          cellClass += 'bg-blue-100 border-blue-300 hover:bg-blue-200';
+      } else if (isTakenByOther) {
+          cellClass += 'bg-red-50 border-red-200 cursor-not-allowed';
       } else if (trainerBooking) {
-          cellClass += "bg-purple-100 border-purple-200 hover:bg-purple-200";
+          cellClass += 'bg-purple-100 border-purple-200 hover:bg-purple-200';
       } else {
-          cellClass += "hover:bg-gray-50 bg-white";
+          cellClass += 'hover:bg-gray-50 bg-white';
       }
 
       return (
           <div
               key={`${dayIndex}-${time}`}
               className={cellClass}
-              onClick={() => !isPast && handleSlotClick(dayIndex, time)}
+              onClick={() => !isPast && !isTakenByOther && handleSlotClick(dayIndex, time)}
           >
               {myBooking && (
                   <div className="flex flex-col items-center animate-scale-up">
-                      <Check className="text-blue-600 mb-1" size={16} />
-                      <span className="text-[10px] font-bold text-blue-700 hidden sm:inline">Tu Sesión</span>
+                      <span className="text-xl">🥊</span>
+                      <span className="text-[10px] font-bold text-blue-700 hidden sm:inline">Mi Sesión</span>
+                  </div>
+              )}
+              {isTakenByOther && (
+                  <div className="flex flex-col items-center">
+                      <span className="text-red-400 text-xs font-bold">●</span>
+                      <span className="text-[9px] font-bold text-red-400 hidden sm:inline">Ocupado</span>
                   </div>
               )}
               {trainerBooking && (
@@ -241,7 +281,7 @@ const AgendaSection = ({ user }: { user: any }) => {
                       </span>
                   </div>
               )}
-              {!myBooking && !trainerBooking && !isPast && (
+              {!myBooking && !trainerBooking && !isTakenByOther && !isPast && (
                   <div className="opacity-0 hover:opacity-100 transition-opacity">
                       <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
                   </div>
