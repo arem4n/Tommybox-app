@@ -10,9 +10,9 @@ import { signOut } from '../../lib/auth';
 
 interface DashboardLayoutProps {
   user: any;
+  onUserUpdate?: (updated: any) => void;
 }
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user, onUserUpdate }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const currentTab = searchParams.get('tab') || 'agenda';
@@ -101,7 +101,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
           {currentTab === 'agenda' && <AgendaSection user={user} />}
           {currentTab === 'community' && <CommunitySection user={user} />}
           {currentTab === 'plan' && <PlansSection user={user} />}
-          {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => {}} />}
+          {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => onUserUpdate?.(updated)} />}
         </div>
       </main>
     </div>

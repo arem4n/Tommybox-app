@@ -64,7 +64,7 @@ const App: React.FC = () => {
             setPendingCompletionUser(profile);
             navigate('/');
           } else {
-            setUser(profile);
+            setUser({ ...profile, id: firebaseUser.uid });
             setIsLoggedIn(true);
             if(window.location.pathname === '/') {
                 navigate('/dashboard');
@@ -104,23 +104,27 @@ const App: React.FC = () => {
     }
   };
 
-  const completeRegistration = async (userToComplete: UserProfile & { id: string }, additionalData: { displayName: string; birthDate: string; plan: string }) => {
-      const updatedData: Partial<UserProfile> = {
-        displayName: additionalData.displayName,
-        birthDate: additionalData.birthDate,
-        plan: additionalData.plan || "starter",
-        registrationCompleted: true,
-      };
-      
-      await updateUserProfile(userToComplete.id, updatedData);
-      
-      const updatedUser = { ...userToComplete, ...updatedData };
-      setUser(updatedUser as any);
-      setIsLoggedIn(true);
-      setPendingCompletionUser(null);
-      alert(`¡Bienvenido a TommyBox, ${additionalData.displayName}! 🎉`);
-      navigate('/dashboard');
+  const completeRegistration = async (
+  userToComplete: UserProfile & { id: string },
+  additionalData: { displayName: string; birthDate: string; plan: string }
+) => {
+  const updatedData: Partial<UserProfile> = {
+    displayName: additionalData.displayName,
+    birthDate: additionalData.birthDate,
+    plan: additionalData.plan || 'starter',
+    registrationCompleted: true,
   };
+  await updateUserProfile(userToComplete.id, updatedData);
+
+  // Re-fetch the full profile from Firestore instead of merging in memory
+  const freshProfile = await getUserProfile(userToComplete.id);
+  if (freshProfile) {
+    setUser({ ...freshProfile, id: userToComplete.id } as any);
+    setIsLoggedIn(true);
+  }
+  setPendingCompletionUser(null);
+  navigate('/dashboard');
+};
 
   if (loading) {
     return <LoadingSpinner />;
@@ -146,7 +150,7 @@ const App: React.FC = () => {
             path="/dashboard/*"
             element={
                 <ProtectedRoute user={user}>
-                    <DashboardLayout user={user} />
+                    <DashboardLayout user={user} onUserUpdate={(updated) => setUser(updated)} />
                 </ProtectedRoute>
             }
         />

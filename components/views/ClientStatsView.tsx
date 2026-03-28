@@ -103,30 +103,43 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
       .sort((a, b) => a.date.localeCompare(b.date));
 
   const handleSaveProfile = async () => {
-      if (!editName.trim() || !user?.id) return;
-      setSaving(true);
-      try {
-          await updateDoc(doc(db, 'users', user.id), {
-              displayName: editName.trim(),
-              photoURL: photoURL.trim() || null,
-          });
-          setSaveMsg('¡Perfil actualizado correctamente!');
-          // Optionally trigger onUserUpdate here if needed
-          setTimeout(() => setSaveMsg(''), 3000);
-      } catch(e) {
-          setSaveMsg('Error al guardar. Intenta de nuevo.');
-      } finally {
-          setSaving(false);
-      }
-  };
+  if (!editName.trim() || !user?.id) return;
+  setSaving(true);
+  setSaveMsg('');
+  try {
+    await updateDoc(doc(db, 'users', user.id), {
+      displayName: editName.trim(),
+      photoURL: photoURL.trim() || null,
+    });
+    // Update local state to reflect immediately
+    onUserUpdate({ ...user, displayName: editName.trim(), photoURL: photoURL.trim() || null });
+    setSaveMsg('¡Perfil actualizado correctamente!');
+    setTimeout(() => setSaveMsg(''), 3000);
+  } catch (e) {
+    console.error(e);
+    setSaveMsg('Error al guardar. Intenta de nuevo.');
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in">
-        <div className="flex border-b border-gray-200 mb-6">
-            <button onClick={() => setActiveTab('Estadísticas')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Estadísticas' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Estadísticas</button>
-            <button onClick={() => setActiveTab('Rendimiento')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Rendimiento' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Rendimiento</button>
-            <button onClick={() => setActiveTab('Perfil')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Perfil' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Perfil</button>
-        </div>
+    <div className="max-w-6xl mx-auto animate-fade-in min-h-screen py-4">
+        <div className="flex border-b border-gray-200 mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
+  {(['Estadísticas', 'Rendimiento', 'Perfil'] as const).map(tab => (
+    <button
+      key={tab}
+      onClick={() => setActiveTab(tab)}
+      className={`flex-1 py-3 text-sm font-medium transition-colors ${
+        activeTab === tab
+          ? 'bg-blue-600 text-white'
+          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      {tab}
+    </button>
+  ))}
+</div>
 
         {activeTab === 'Estadísticas' && (
             <>
@@ -311,7 +324,13 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
                    >
                      {saving ? 'Guardando...' : 'Guardar cambios'}
                    </button>
-                   {saveMsg && <p className="text-center text-sm text-green-600 mt-3 font-medium">{saveMsg}</p>}
+                   {saveMsg && (
+  <p className={`text-center text-sm mt-3 font-medium ${
+    saveMsg.includes('Error') ? 'text-red-600' : 'text-green-600'
+  }`}>
+    {saveMsg}
+  </p>
+)}
                  </div>
              </div>
         )}
