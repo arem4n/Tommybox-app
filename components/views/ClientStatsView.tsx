@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Calendar, Dumbbell, Zap, Star } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { Calendar, Dumbbell, Zap, Star, Download } from 'lucide-react';
 
 interface Props {
   user: any;
@@ -82,7 +82,20 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
   const currentPlan = user?.plan || 'Sin plan';
 
   // Group sessions by month for BarChart
-  const groupSessionsByMonth = (sessionsArr: any[]) => {
+  const exportToCSV = () => {
+  if (metrics.length === 0) return;
+  const header = 'Fecha,Ejercicio,Carga (kg),Reps,RPE\n';
+  const rows = metrics.map((m: any) => `${m.date},${m.exercise},${m.load},${m.reps},${m.rpe || ''}`).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tommybox_mis_metricas.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const groupSessionsByMonth = (sessionsArr: any[]) => {
       const counts: Record<string, number> = {};
       sessionsArr.forEach(s => {
           const dateObj = s.date?.toDate ? s.date.toDate() : new Date(s.date);
@@ -166,18 +179,23 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-2 gap-8">
+                <div className="flex justify-end mb-4">
+  <button onClick={exportToCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
+    <Download size={16} /> Descargar CSV
+  </button>
+</div>
+<div className="grid lg:grid-cols-2 gap-8">
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Sesiones por mes</h3>
                         {sessionsByMonth.length > 0 ? (
                             <ResponsiveContainer width="100%" height={220}>
                             <BarChart data={sessionsByMonth}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                                <Tooltip cursor={{fill: '#f8fafc'}} />
-                                <Bar dataKey="sesiones" fill="#2563eb" radius={[4,4,0,0]} isAnimationActive={true} animationDuration={800} />
-                            </BarChart>
+  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+  <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+  <YAxis allowDecimals={false} tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} />
+  <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+  <Bar dataKey="sesiones" fill="#2563eb" radius={[4,4,0,0]} isAnimationActive={true} animationDuration={800} />
+</BarChart>
                             </ResponsiveContainer>
                         ) : (
                             <div className="h-[220px] flex items-center justify-center text-gray-400">Sin datos de sesiones.</div>
@@ -202,13 +220,19 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
 
                         {filteredMetrics.length > 0 ? (
                             <ResponsiveContainer width="100%" height={220}>
-                            <LineChart data={filteredMetrics}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                                <YAxis tick={{ fontSize: 12 }} unit=" kg" />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="load" name="Carga" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
-                            </LineChart>
+                            <AreaChart data={filteredMetrics}>
+  <defs>
+    <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+    </linearGradient>
+  </defs>
+  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+  <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+  <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} unit=" kg" axisLine={false} tickLine={false} />
+  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+  <Area type="monotone" dataKey="load" name="Carga" stroke="#2563eb" fillOpacity={1} fill="url(#colorLoad)" strokeWidth={3} activeDot={{ r: 6, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }} isAnimationActive={true} animationDuration={1000} />
+</AreaChart>
                             </ResponsiveContainer>
                         ) : (
                             <div className="h-[220px] flex items-center justify-center text-gray-400 text-center">
