@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db, storage } from '../../services/firebase';
+import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, AreaChart, Area
@@ -33,7 +33,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
 
   // Profile state
   const [editName, setEditName]       = useState(user?.displayName || '');
-  const [editEmail, setEditEmail]     = useState(user?.contactEmail || user?.email || '');
+  const [editContactEmail, setEditContactEmail] = useState(user?.contactEmail || '');
   const [editPhone, setEditPhone]     = useState(user?.phone || '');
   const [editBirthdate, setEditBirthdate] = useState(user?.birthDate || '');
   const [photoURL, setPhotoURL]       = useState(user?.photoURL || '');
@@ -44,7 +44,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Feeling form state
-  const [feelingDate, setFeelingDate]         = useState(new Date().toISOString().split('T')[0]);
+
   const [feelingSelected, setFeelingSelected] = useState<number | null>(null);
   const [feelingText, setFeelingText]         = useState('');
   const [savingFeeling, setSavingFeeling]     = useState(false);
@@ -129,26 +129,43 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
   // ── Photo upload ────────────────────────────────────────────────────────────
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !storage) return;
+    if (!file) return;
     setUploading(true);
-    setUploadProgress(0);
-    const storageRef = ref(storage, `avatars/${user.id}/${Date.now()}_${file.name}`);
-    const task = uploadBytesResumable(storageRef, file);
-    task.on('state_changed',
-      snap => setUploadProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
-      err => { console.error(err); setUploading(false); },
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        setPhotoURL(url);
-        setUploading(false);
-        // Auto-save photo to Firestore immediately
-        await updateDoc(doc(db, 'users', user.id), { photoURL: url });
-        onUserUpdate({ ...user, photoURL: url });
-      }
-    );
+    setUploadProgress(20);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const img = new Image();
+      img.onload = async () => {
+        const MAX = 400;
+        let w = img.width, h = img.height;
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else       { w = Math.round(w * MAX / h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        const base64 = canvas.toDataURL('image/jpeg', 0.75);
+        setUploadProgress(80);
+        try {
+          await updateDoc(doc(db, 'users', user.id), { photoURL: base64 });
+          setPhotoURL(base64);
+          if (typeof onUserUpdate === 'function') {
+            onUserUpdate({ ...user, photoURL: base64 });
+          }
+          setUploadProgress(100);
+          setTimeout(() => { setUploading(false); setUploadProgress(0); }, 600);
+        } catch (err) {
+          console.error('Photo save error:', err);
+          setUploading(false);
+          setUploadProgress(0);
+        }
+      };
+      img.src = evt.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
-  // ── Save profile ────────────────────────────────────────────────────────────
+    // ── Save profile ────────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
     if (!editName.trim()) return;
     setSaving(true);
@@ -156,7 +173,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
     try {
       const updates: any = {
         displayName: editName.trim(),
-        contactEmail: editEmail.trim() || null,
+        contactEmail: editContactEmail.trim() || null,
         phone: editPhone.trim() || null,
         birthDate: editBirthdate || null,
       };
@@ -174,11 +191,11 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
 
   // ── Save feeling ────────────────────────────────────────────────────────────
   const handleSaveFeeling = async () => {
-    if (feelingSelected === null || !feelingDate) return;
+    if (feelingSelected === null) return;
     setSavingFeeling(true);
     try {
       await addDoc(collection(db, `users/${user.id}/feelings`), {
-        date: feelingDate,
+        date: new Date().toISOString().split('T')[0],
         value: feelingSelected,
         emoji: FEELING_OPTIONS.find(o => o.value === feelingSelected)?.emoji || '',
         text: feelingText.trim() || null,
@@ -186,7 +203,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
       });
       setFeelingSelected(null);
       setFeelingText('');
-      setFeelingDate(new Date().toISOString().split('T')[0]);
+
     } finally {
       setSavingFeeling(false);
     }
@@ -309,9 +326,8 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
               rows={3}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-3"
             />
-            <div className="flex gap-3 items-center">
-              <input type="date" value={feelingDate} onChange={e => setFeelingDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+            <div className="flex gap-3 items-center justify-end">
+              {/* Date removed */}
               <button onClick={handleSaveFeeling} disabled={feelingSelected === null || savingFeeling}
                 className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-600/20">
                 {savingFeeling ? 'Guardando...' : 'Guardar'}
@@ -484,10 +500,19 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
               <label className="block text-sm font-bold text-gray-700 mb-1">Nombre o apodo *</label>
               <input type="text" value={editName} onChange={e => setEditName(e.target.value)} maxLength={30} placeholder="¿Cómo quieres que te llamemos?" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />
             </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Email de Contacto</label>
-              <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="tu@email.com" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />
-            </div>
+<div>
+  <label className="block text-sm font-semibold text-gray-700 mb-1">
+    Email de contacto
+  </label>
+  <input
+    type="email"
+    value={editContactEmail}
+    onChange={e => setEditContactEmail(e.target.value)}
+    placeholder="tucorreo@ejemplo.com"
+    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+  />
+  <p className="text-xs text-gray-400 mt-1">Opcional. Puede diferir del correo de acceso.</p>
+</div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono</label>
               <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+56 9 xxxx xxxx" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />

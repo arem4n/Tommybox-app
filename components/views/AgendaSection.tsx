@@ -32,6 +32,7 @@ const AgendaSection = ({ user }: { user: any }) => {
   const [feelingModal, setFeelingModal] = useState(false);
   const [feelingSelected, setFeelingSelected] = useState<number | null>(null);
   const [feelingText, setFeelingText] = useState('');
+  const [feelingSessionDate, setFeelingSessionDate] = useState<string>('');
   const [savingFeeling, setSavingFeeling] = useState(false);
 
   const handleSaveFeeling = async () => {
@@ -367,7 +368,13 @@ const AgendaSection = ({ user }: { user: any }) => {
                    {isTrainer ? 'Gestiona las sesiones de todos los atletas' : 'Reserva tus horas de entrenamiento'}
                </p>
                {!isTrainer && (
-                 <button onClick={() => setFeelingModal(true)} className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                 <button
+  onClick={() => {
+    setFeelingSessionDate(new Date().toISOString().split('T')[0]);
+    setFeelingModal(true);
+  }}
+  className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+>
                     🎯 ¿Cómo te sentiste hoy? Registrar
                  </button>
                )}

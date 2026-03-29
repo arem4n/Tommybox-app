@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dumbbell, BarChart, Star, ChevronLeft, ChevronRight, Quote, X } from 'lucide-react';
 import { View } from '../../types';
 
@@ -29,31 +29,25 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
 
   // Responsive logic
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
+    touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    touchEndX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-    if (isLeftSwipe) {
-      nextSlide();
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      const totalPages = Math.ceil(testimonials.length / itemsPerPage);
+      if (diff > 0) setCurrentIndex(i => Math.min(i + 1, totalPages - 1));
+      else          setCurrentIndex(i => Math.max(i - 1, 0));
     }
-    if (isRightSwipe) {
-      prevSlide();
-    }
-    setTouchStart(null);
-    setTouchEnd(null);
   };
 
   useEffect(() => {
@@ -100,6 +94,9 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
             src="https://i.postimg.cc/rpM8kSt5/20251103_141407_0000.png"
             alt="TommyBox"
             className="h-10 object-contain"
+            style={{
+              filter: 'brightness(0) saturate(100%) invert(27%) sepia(98%) saturate(600%) hue-rotate(210deg) brightness(90%) contrast(100%)'
+            }}
           />
           <button
             onClick={() => setShowLoginModal(true)}
@@ -119,6 +116,9 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
               src="https://i.postimg.cc/rpM8kSt5/20251103_141407_0000.png"
               alt="TommyBox Logo"
               className="h-24 md:h-32 mx-auto mb-8 animate-fade-in"
+              style={{
+                filter: 'brightness(0) saturate(100%) invert(27%) sepia(98%) saturate(600%) hue-rotate(210deg) brightness(90%) contrast(100%)'
+              }}
             />
             <h1 className="text-4xl font-extrabold text-blue-900 md:text-6xl leading-tight">
               Entrena con un programa funcional, personalizado y respaldado por ciencia para mejorar tu salud, fuerza y movilidad.

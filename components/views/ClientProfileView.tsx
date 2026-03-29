@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, Timestamp, orderBy, getDocs } from 'firebase/firestore';
 import { ChevronLeft, Download, Upload, Activity, FileText, Heart, Calendar, Phone } from 'lucide-react';
+import { getPlanName } from '../../utils/plans';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 
 const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void }) => {
@@ -169,7 +170,7 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                   </div>
                   <div className="flex-1">
                     <h2 className="font-black text-gray-900">{client.displayName}</h2>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{client.plan || 'Sin plan'}</span>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{getPlanName(client.plan || 'free')}</span>
                   </div>
                   <button onClick={() => exportToCSV(client.id)}
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700">
