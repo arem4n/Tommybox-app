@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, Timestamp, orderBy, getDocs } from 'firebase/firestore';
-import { ChevronLeft, Download, Upload, Activity, FileText } from 'lucide-react';
+import { ChevronLeft, Download, Upload, Activity, FileText, Heart, Calendar, Phone } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 
 const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void }) => {
-  const [activeTab, setActiveTab] = useState<'Rendimiento' | 'Observaciones'>('Rendimiento');
+  const [activeTab, setActiveTab] = useState<'Rendimiento' | 'Sensaciones' | 'Observaciones'>('Rendimiento');
   const [metrics, setMetrics] = useState<any[]>([]);
   const [observations, setObservations] = useState<any[]>([]);
+  const [editingMetricId, setEditingMetricId] = useState<string | null>(null);
+  const [editMetricObj, setEditMetricObj] = useState<any>({});
+  const [feelings, setFeelings] = useState<any[]>([]);
+  const [selectedExercise, setSelectedExercise] = useState<string>('');
 
   // Metric Form State
   const [metricExercise, setMetricExercise] = useState('');
@@ -80,6 +85,40 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
     e.target.value = '';
   };
 
+  const saveInlineEdit = async (id: string) => {
+    try {
+      await updateDoc(doc(db, `users/${client.id}/metrics`, id), {
+        date: editMetricObj.date,
+        exercise: editMetricObj.exercise,
+        load: parseFloat(editMetricObj.load),
+        reps: parseInt(editMetricObj.reps),
+        rpe: editMetricObj.rpe ? parseFloat(editMetricObj.rpe) : null
+      });
+      setEditingMetricId(null);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const deleteMetric = async (id: string) => {
+    if (confirm('¿Eliminar esta métrica?')) {
+      await deleteDoc(doc(db, `users/${client.id}/metrics`, id));
+    }
+  };
+
+  const FEELING_OPTIONS = [
+    { value: 1, emoji: '😫', label: 'Muy mal' },
+    { value: 2, emoji: '🙁', label: 'Mal' },
+    { value: 3, emoji: '😐', label: 'Regular' },
+    { value: 4, emoji: '🙂', label: 'Bien' },
+    { value: 5, emoji: '🤩', label: 'Excelente' },
+  ];
+
+  const uniqueExercises = Array.from(new Set(metrics.map(m => m.exercise)));
+  const exerciseData = [...metrics]
+    .filter(m => selectedExercise ? m.exercise === selectedExercise : true)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   const handleAddMetric = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!metricExercise || !metricLoad || !metricReps || !metricDate) return;
@@ -148,6 +187,14 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                         <Activity size={18} /><span>Rendimiento</span>
                     </button>
                     <button
+                        onClick={() => setActiveTab('Sensaciones')}
+                        className={`flex items-center gap-2 py-3 px-5 font-bold text-sm rounded-t-xl transition-colors ${
+                            activeTab === 'Sensaciones' ? 'bg-gray-50 text-blue-600 border-t-4 border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                        <Heart size={18} /><span>Sensaciones</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('Observaciones')}
                         className={`flex items-center gap-2 py-3 px-5 font-bold text-sm rounded-t-xl transition-colors ${
                             activeTab === 'Observaciones' ? 'bg-gray-50 text-blue-600 border-t-4 border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -196,21 +243,78 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {metrics.map(m => (
+                                    {metrics.map(m => {
+                                      const isEditing = editingMetricId === m.id;
+                                      return (
                                         <tr key={m.id} className="hover:bg-blue-50/30 transition-colors">
-                                            <td className="p-4 text-sm text-gray-900">{m.date}</td>
-                                            <td className="p-4 text-sm font-bold text-gray-900">{m.exercise}</td>
-                                            <td className="p-4 text-sm text-gray-700 font-medium">{m.load} kg</td>
-                                            <td className="p-4 text-sm text-gray-700">{m.reps}</td>
-                                            <td className="p-4 text-sm text-gray-500">{m.rpe || '-'}</td>
+                                            {isEditing ? (
+                                                <>
+                                                    <td className="p-2"><input type="date" value={editMetricObj.date} onChange={e => setEditMetricObj({...editMetricObj, date: e.target.value})} className="w-full text-sm p-1 border rounded" /></td>
+                                                    <td className="p-2"><input type="text" value={editMetricObj.exercise} onChange={e => setEditMetricObj({...editMetricObj, exercise: e.target.value})} className="w-full text-sm p-1 border rounded" /></td>
+                                                    <td className="p-2"><input type="number" step="any" value={editMetricObj.load} onChange={e => setEditMetricObj({...editMetricObj, load: e.target.value})} className="w-20 text-sm p-1 border rounded" /></td>
+                                                    <td className="p-2"><input type="number" value={editMetricObj.reps} onChange={e => setEditMetricObj({...editMetricObj, reps: e.target.value})} className="w-16 text-sm p-1 border rounded" /></td>
+                                                    <td className="p-2 flex gap-2">
+                                                        <input type="number" value={editMetricObj.rpe} onChange={e => setEditMetricObj({...editMetricObj, rpe: e.target.value})} className="w-16 text-sm p-1 border rounded" />
+                                                        <button onClick={() => saveInlineEdit(m.id)} className="px-2 py-1 bg-green-500 text-white text-xs rounded font-bold">✓</button>
+                                                        <button onClick={() => setEditingMetricId(null)} className="px-2 py-1 bg-gray-300 text-xs rounded font-bold">X</button>
+                                                    </td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="p-4 text-sm text-gray-900" onDoubleClick={() => { setEditingMetricId(m.id); setEditMetricObj(m); }}>{m.date}</td>
+                                                    <td className="p-4 text-sm font-bold text-gray-900" onDoubleClick={() => { setEditingMetricId(m.id); setEditMetricObj(m); }}>{m.exercise}</td>
+                                                    <td className="p-4 text-sm text-gray-700 font-medium" onDoubleClick={() => { setEditingMetricId(m.id); setEditMetricObj(m); }}>{m.load} kg</td>
+                                                    <td className="p-4 text-sm text-gray-700" onDoubleClick={() => { setEditingMetricId(m.id); setEditMetricObj(m); }}>{m.reps}</td>
+                                                    <td className="p-4 text-sm text-gray-500 flex justify-between items-center group">
+                                                        <span onDoubleClick={() => { setEditingMetricId(m.id); setEditMetricObj(m); }}>{m.rpe || '-'}</span>
+                                                        <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
+                                                            <button onClick={() => { setEditingMetricId(m.id); setEditMetricObj(m); }} className="text-blue-500 hover:text-blue-700">✎</button>
+                                                            <button onClick={() => deleteMetric(m.id)} className="text-red-500 hover:text-red-700">🗑</button>
+                                                        </div>
+                                                    </td>
+                                                </>
+                                            )}
                                         </tr>
-                                    ))}
+                                      );
+                                    })}
                                 </tbody>
                             </table>
                             {metrics.length === 0 && (
                                 <div className="p-12 text-center text-gray-500">Sin datos aún. Agrega la primera métrica.</div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'Sensaciones' && (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-xl font-bold text-gray-900 mb-6">Historial de Sensaciones</h3>
+                        {feelings.length > 0 ? (
+                            <div className="space-y-4">
+                                {feelings.map(f => (
+                                    <div key={f.id} className="flex gap-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+                                        <div className="w-12 h-12 flex-shrink-0 bg-white rounded-full flex items-center justify-center text-2xl shadow-sm border border-gray-200">
+                                            {f.emoji || FEELING_OPTIONS.find(o => o.value === f.value)?.emoji}
+                                        </div>
+                                        <div>
+                                            <div className="flex gap-2 items-center">
+                                                <span className="font-bold text-gray-900">{f.date}</span>
+                                                <span className="text-xs px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-600 font-medium">
+                                                    Nivel {f.value}
+                                                </span>
+                                            </div>
+                                            {f.text && <p className="text-gray-700 mt-1 text-sm">{f.text}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-12 text-center text-gray-500 border border-gray-100 rounded-2xl bg-gray-50">
+                                Este atleta aún no ha registrado sus sensaciones post-entrenamiento.
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

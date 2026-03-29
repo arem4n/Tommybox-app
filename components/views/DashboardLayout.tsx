@@ -23,6 +23,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user, onUserUpdate })
       }
   }, [searchParams, setSearchParams, user]);
 
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -65,12 +68,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user, onUserUpdate })
                 </div>
             )}
             <button
-              onClick={handleLogout}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-              title="Salir"
+              onClick={() => setShowLogoutModal(true)}
+              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2 font-bold"
+              title="Cerrar sesión"
             >
               <LogOut size={20} />
-              <span className="text-sm font-medium hidden md:block">Salir</span>
+              <span className="text-sm font-bold hidden md:block">Salir</span>
             </button>
           </div>
         </div>
@@ -105,6 +108,37 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user, onUserUpdate })
           {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => onUserUpdate?.(updated)} />}
         </div>
       </main>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 animate-scale-up">
+                <LogOut size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">¿Cerrar sesión?</h3>
+              <p className="text-gray-500 mb-6">
+                Estás a punto de salir de tu cuenta.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors"
+                >
+                  Salir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

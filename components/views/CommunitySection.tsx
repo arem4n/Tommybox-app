@@ -6,7 +6,51 @@ import { Heart, MessageCircle, Share2, MoreHorizontal, Camera, Video, Smile } fr
 const CommunitySection = ({ user }: { user: any }) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [commentingOn, setCommentingOn] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setNewPostImage(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -29,11 +73,15 @@ const CommunitySection = ({ user }: { user: any }) => {
       await addDoc(collection(db, 'community'), {
         authorId: user.id,
         displayName: user.displayName || 'Anónimo',
+        authorPhotoUrl: user.photoUrl || null,
         content: newPostContent,
+        imageUrl: newPostImage,
         likes: [],
+        comments: [],
         createdAt: serverTimestamp()
       });
       setNewPostContent('');
+      setNewPostImage(null);
     } catch (error) {
       console.error("Error adding post: ", error);
     }
@@ -49,23 +97,48 @@ const CommunitySection = ({ user }: { user: any }) => {
     }
   };
 
-  const handleLike = async (postId: string, currentLikes: string[]) => {
+  const handleLike = async (postId: string, currentLikes: any[]) => {
     if (!user?.id) return;
     const postRef = doc(db, 'community', postId);
-    const hasLiked = currentLikes.includes(user.id);
+
+    // Support legacy strings or objects
+    const likeObj = currentLikes.find(l => (typeof l === 'string' ? l === user.id : l.id === user.id));
+    const hasLiked = !!likeObj;
 
     try {
       if (hasLiked) {
+        // If it's a string, we remove the string. If object, remove the object.
         await updateDoc(postRef, {
-          likes: arrayRemove(user.id)
+          likes: typeof likeObj === 'string' ? arrayRemove(user.id) : arrayRemove(likeObj)
         });
       } else {
         await updateDoc(postRef, {
-          likes: arrayUnion(user.id)
+          likes: arrayUnion({ id: user.id, name: user.displayName || 'Anónimo' })
         });
       }
     } catch (error) {
       console.error("Error toggling like: ", error);
+    }
+  };
+
+  const handleComment = async (postId: string) => {
+    if (!newComment.trim() || !user?.id) return;
+    try {
+      const postRef = doc(db, 'community', postId);
+      await updateDoc(postRef, {
+        comments: arrayUnion({
+          id: Date.now().toString(),
+          userId: user.id,
+          userName: user.displayName || 'Anónimo',
+          userPhoto: user.photoUrl || null,
+          text: newComment.trim(),
+          createdAt: new Date().toISOString()
+        })
+      });
+      setNewComment('');
+      setCommentingOn(null);
+    } catch (error) {
+      console.error("Error adding comment: ", error);
     }
   };
 
@@ -128,8 +201,16 @@ const CommunitySection = ({ user }: { user: any }) => {
       {/* Post Feed */}
       <div className="space-y-6">
         {posts.map(post => {
+          const isOwner = post.authorId === user?.id;
           const likes = post.likes || [];
-          const hasLiked = user?.id ? likes.includes(user.id) : false;
+          const comments = post.comments || [];
+          const hasLiked = likes.some((l: any) => typeof l === 'string' ? l === user?.id : l.id === user?.id);
+          const likesCount = likes.length;
+
+          // Format likers for tooltip
+          const likersText = likesCount > 0
+              ? likes.map((l: any) => typeof l === 'string' ? 'Alguien' : l.name).join(', ')
+              : '';
 
           return (
             <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -204,6 +285,48 @@ const CommunitySection = ({ user }: { user: any }) => {
                   <span>Compartir</span>
                 </button>
               </div>
+
+              {commentingOn === post.id && (
+                <div className="bg-gray-50 p-4 border-t border-gray-100">
+                  <div className="flex gap-3 mb-4">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-100 flex-shrink-0 flex justify-center items-center text-xs font-bold text-blue-600">
+                      {user?.photoUrl ? <img src={user.photoUrl} alt="Me" className="w-full h-full object-cover" /> : user?.displayName?.charAt(0) || 'U'}
+                    </div>
+                    <div className="flex-1 flex gap-2">
+                      <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Escribe un comentario..."
+                        className="flex-1 bg-white border border-gray-200 rounded-full px-4 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={() => handleComment(post.id)}
+                        disabled={!newComment.trim()}
+                        className="px-4 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 disabled:opacity-50 text-sm transition-colors"
+                      >
+                        Enviar
+                      </button>
+                    </div>
+                  </div>
+
+                  {comments.length > 0 && (
+                    <div className="space-y-3 mt-4">
+                      {comments.map((c: any) => (
+                        <div key={c.id} className="flex gap-3">
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 flex justify-center items-center text-xs font-bold text-gray-600">
+                            {c.userPhoto ? <img src={c.userPhoto} alt={c.userName} className="w-full h-full object-cover" /> : c.userName?.charAt(0) || 'U'}
+                          </div>
+                          <div className="bg-white px-4 py-2 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm flex-1">
+                            <p className="font-bold text-sm text-gray-900">{c.userName}</p>
+                            <p className="text-gray-700 text-sm mt-0.5">{c.text}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

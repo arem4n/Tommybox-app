@@ -33,6 +33,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
 
   // Profile state
   const [editName, setEditName]       = useState(user?.displayName || '');
+  const [editEmail, setEditEmail]     = useState(user?.contactEmail || user?.email || '');
   const [editPhone, setEditPhone]     = useState(user?.phone || '');
   const [editBirthdate, setEditBirthdate] = useState(user?.birthDate || '');
   const [photoURL, setPhotoURL]       = useState(user?.photoURL || '');
@@ -155,6 +156,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
     try {
       const updates: any = {
         displayName: editName.trim(),
+        contactEmail: editEmail.trim() || null,
         phone: editPhone.trim() || null,
         birthDate: editBirthdate || null,
       };
@@ -219,7 +221,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
   const tabItems = [
     { id: 'stats',    icon: BarChart2, label: 'Stats' },
     { id: 'progress', icon: Dumbbell,  label: 'Progreso' },
-    { id: 'feelings', icon: Heart,     label: 'Sensaciones' },
+
     { id: 'profile',  icon: User,      label: 'Perfil' },
   ];
 
@@ -280,6 +282,88 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
           </div>
         </>
       )}
+
+            {/* ── FEELINGS ── */}
+            {/* Sensaciones extraídas */}
+      <>
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 h-fit">
+            <h3 className="text-base font-black text-gray-900 mb-4">¿Cómo te sentiste hoy?</h3>
+            <div className="flex justify-between gap-2 mb-4">
+              {FEELING_OPTIONS.map(opt => (
+                <button key={opt.value} onClick={() => setFeelingSelected(opt.value)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border-2 transition-all ${
+                    feelingSelected === opt.value
+                      ? 'border-blue-500 bg-blue-50 scale-105'
+                      : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                  }`}>
+                  <span className="text-2xl">{opt.emoji}</span>
+                  <span className="text-[10px] text-gray-500 font-bold hidden sm:inline">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feelingText}
+              onChange={e => setFeelingText(e.target.value)}
+              placeholder="Comentario opcional sobre tu sesión..."
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-3"
+            />
+            <div className="flex gap-3 items-center">
+              <input type="date" value={feelingDate} onChange={e => setFeelingDate(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <button onClick={handleSaveFeeling} disabled={feelingSelected === null || savingFeeling}
+                className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-600/20">
+                {savingFeeling ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+
+          <div>
+          {/* Feelings chart */}
+          {feelingsChartData.length > 1 && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <h3 className="text-base font-black text-gray-900 mb-4">Tendencia de ánimo</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={feelingsChartData} margin={{ top: 5, right: 5, bottom: 5, left: -30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[1, 5]} ticks={[1,2,3,4,5]} tick={{ fontSize: 14 }} axisLine={false} tickLine={false}
+                    tickFormatter={v => FEELING_OPTIONS.find(o => o.value === v)?.emoji || ''} />
+                  <Tooltip content={<FeelingTooltip />} cursor={{ stroke: '#f0f0f0', strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="estado" stroke="#eab308" strokeWidth={3}
+                    dot={{ r: 5, fill: '#eab308', strokeWidth: 0 }}
+                    activeDot={{ r: 7 }}
+                    isAnimationActive={true} animationDuration={1000} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Feelings history list */}
+          {feelings.length > 0 && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-base font-black text-gray-900 mb-4">Historial</h3>
+              <div className="space-y-3">
+                {feelings.slice(0, 5).map(f => (
+                  <div key={f.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">
+                      {f.emoji}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 mb-0.5">{f.date}</p>
+                      {f.text && <p className="text-sm font-medium text-gray-800">{f.text}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          </div>
+        </div>
+      </>
+
+
 
       {/* ── PROGRESS ── */}
       {activeTab === 'progress' && (
@@ -357,85 +441,6 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
         </div>
       )}
 
-      {/* ── FEELINGS ── */}
-      {activeTab === 'feelings' && (
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 h-fit">
-            <h3 className="text-base font-black text-gray-900 mb-4">¿Cómo te sentiste hoy?</h3>
-            <div className="flex justify-between gap-2 mb-4">
-              {FEELING_OPTIONS.map(opt => (
-                <button key={opt.value} onClick={() => setFeelingSelected(opt.value)}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border-2 transition-all ${
-                    feelingSelected === opt.value
-                      ? 'border-blue-500 bg-blue-50 scale-105'
-                      : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
-                  }`}>
-                  <span className="text-2xl">{opt.emoji}</span>
-                  <span className="text-[10px] text-gray-500 font-bold hidden sm:inline">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-            <textarea
-              value={feelingText}
-              onChange={e => setFeelingText(e.target.value)}
-              placeholder="Comentario opcional sobre tu sesión..."
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none resize-none mb-3"
-            />
-            <div className="flex gap-3 items-center">
-              <input type="date" value={feelingDate} onChange={e => setFeelingDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />
-              <button onClick={handleSaveFeeling} disabled={feelingSelected === null || savingFeeling}
-                className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm shadow-blue-600/20">
-                {savingFeeling ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </div>
-
-          <div>
-          {/* Feelings chart */}
-          {feelingsChartData.length > 1 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-              <h3 className="text-base font-black text-gray-900 mb-4">Tendencia de ánimo</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={feelingsChartData} margin={{ top: 5, right: 5, bottom: 5, left: -30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[1, 5]} ticks={[1,2,3,4,5]} tick={{ fontSize: 14 }} axisLine={false} tickLine={false}
-                    tickFormatter={v => FEELING_OPTIONS.find(o => o.value === v)?.emoji || ''} />
-                  <Tooltip content={<FeelingTooltip />} cursor={{ stroke: '#f0f0f0', strokeWidth: 2 }} />
-                  <Line type="monotone" dataKey="estado" stroke="#eab308" strokeWidth={3}
-                    dot={{ r: 5, fill: '#eab308', strokeWidth: 0 }}
-                    activeDot={{ r: 7 }}
-                    isAnimationActive={true} animationDuration={1000} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Feelings history list */}
-          {feelings.length > 0 && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h3 className="text-base font-black text-gray-900 mb-4">Historial</h3>
-              <div className="space-y-3">
-                {feelings.slice(0, 5).map(f => (
-                  <div key={f.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">
-                      {f.emoji}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-400 mb-0.5">{f.date}</p>
-                      {f.text && <p className="text-sm font-medium text-gray-800">{f.text}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          </div>
-        </div>
-      )}
-
       {/* ── PROFILE ── */}
       {activeTab === 'profile' && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-lg mx-auto">
@@ -478,6 +483,10 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Nombre o apodo *</label>
               <input type="text" value={editName} onChange={e => setEditName(e.target.value)} maxLength={30} placeholder="¿Cómo quieres que te llamemos?" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Email de Contacto</label>
+              <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="tu@email.com" className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" />
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Teléfono</label>

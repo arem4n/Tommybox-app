@@ -109,7 +109,7 @@ const PlansSection = ({ user }: { user: any }) => {
           <p className="text-xl text-gray-500">Transforma tu vida con nuestros programas de entrenamiento personalizado.</p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8 items-center">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12 items-center">
         {plansToRender.map(plan => {
           const isCurrent = currentPlan === plan.id;
           const isFeatured = plan.featured;
@@ -118,7 +118,7 @@ const PlansSection = ({ user }: { user: any }) => {
             <div
               key={plan.id}
               className={`relative bg-white rounded-[2rem] p-8 flex flex-col h-full transition-all duration-300 ${
-                isFeatured ? 'ring-4 ring-blue-600 shadow-2xl lg:-mt-8 lg:mb-8 scale-105 z-10' : 'border border-gray-100 shadow-xl hover:shadow-2xl hover:-translate-y-2'
+                isFeatured ? 'ring-4 ring-blue-600 shadow-2xl lg:-mt-8 lg:mb-8 lg:scale-105 z-10' : 'border border-gray-100 shadow-xl lg:hover:shadow-2xl lg:hover:-translate-y-2'
               } ${isCurrent ? 'bg-blue-50/30' : ''}`}
             >
               {isFeatured && !isCurrent && (

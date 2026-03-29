@@ -20,7 +20,41 @@ const getStartOfWeek = (date: Date) => {
     return new Date(d.setDate(diff));
 };
 
+const FEELING_OPTIONS = [
+  { value: 1, emoji: '😫', label: 'Muy mal' },
+  { value: 2, emoji: '🙁', label: 'Mal' },
+  { value: 3, emoji: '😐', label: 'Regular' },
+  { value: 4, emoji: '🙂', label: 'Bien' },
+  { value: 5, emoji: '🤩', label: 'Excelente' },
+];
+
 const AgendaSection = ({ user }: { user: any }) => {
+  const [feelingModal, setFeelingModal] = useState(false);
+  const [feelingSelected, setFeelingSelected] = useState<number | null>(null);
+  const [feelingText, setFeelingText] = useState('');
+  const [savingFeeling, setSavingFeeling] = useState(false);
+
+  const handleSaveFeeling = async () => {
+    if (feelingSelected === null) return;
+    setSavingFeeling(true);
+    try {
+      await addDoc(collection(db, `users/${user.id}/feelings`), {
+        date: new Date().toISOString().split('T')[0],
+        value: feelingSelected,
+        emoji: FEELING_OPTIONS.find(o => o.value === feelingSelected)?.emoji || '',
+        text: feelingText.trim() || null,
+        createdAt: Timestamp.now()
+      });
+      setFeelingSelected(null);
+      setFeelingText('');
+      setFeelingModal(false);
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setSavingFeeling(false);
+    }
+  };
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modal, setModal] = useState<{
       type: string;
@@ -163,7 +197,13 @@ const AgendaSection = ({ user }: { user: any }) => {
 
       if (isTrainer) {
            if (existingSession) {
-               alert(`Sesión agendada con: ${existingSession.clientName}`);
+               setModal({
+               type: 'trainer-info',
+               sessionTime: time,
+               sessionDay: dayIndex,
+               clientName: existingSession.clientName,
+               message: existingSession.bookedBy
+           });
            }
            return;
       }
@@ -189,6 +229,7 @@ const AgendaSection = ({ user }: { user: any }) => {
       }
 
       const weekLimit = getPlanLimit(userPlan || 'free');
+      console.log('[Agenda] Booking attempt:', { userPlan, weekLimit, weeklyCount });
       if (!isTrainer && weekLimit > 0 && weeklyCount >= weekLimit) {
         setModal({
           type: 'limit',
@@ -325,6 +366,11 @@ const AgendaSection = ({ user }: { user: any }) => {
                <p className="text-gray-500 text-sm">
                    {isTrainer ? 'Gestiona las sesiones de todos los atletas' : 'Reserva tus horas de entrenamiento'}
                </p>
+               {!isTrainer && (
+                 <button onClick={() => setFeelingModal(true)} className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                    🎯 ¿Cómo te sentiste hoy? Registrar
+                 </button>
+               )}
            </div>
 
            {!isTrainer && (
@@ -490,6 +536,34 @@ const AgendaSection = ({ user }: { user: any }) => {
                                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
                                >
                                    Confirmar
+                               </button>
+                           </div>
+                       </div>
+                   )}
+
+                   {modal.type === 'trainer-info' && (
+                       <div className="text-center">
+                           <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-600 animate-scale-up">
+                               <Users size={32} />
+                           </div>
+                           <h3 className="text-xl font-bold text-gray-900 mb-2">Sesión Agendada</h3>
+                           <p className="text-gray-500 mb-6">
+                               Con: <span className="font-bold text-gray-900">{modal.clientName || 'Atleta'}</span>
+                           </p>
+                           <div className="flex gap-3">
+                               <button
+                                   onClick={() => setModal({ ...modal, type: 'none' })}
+                                   className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                               >
+                                   Cerrar
+                               </button>
+                               <button
+                                   onClick={() => {
+                                       window.location.href = `/?view=client&clientId=${modal.message}`;
+                                   }}
+                                   className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors"
+                               >
+                                   Ver Perfil
                                </button>
                            </div>
                        </div>

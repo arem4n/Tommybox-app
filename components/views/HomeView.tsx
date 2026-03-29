@@ -29,8 +29,33 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   // Responsive logic
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    if (isLeftSwipe) {
+      nextSlide();
+    }
+    if (isRightSwipe) {
+      prevSlide();
+    }
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) setItemsPerPage(3);
@@ -48,7 +73,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
     if (isPaused) return;
     const interval = setInterval(() => {
       nextSlide();
-    }, 5000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [currentIndex, isPaused, itemsPerPage]);
 

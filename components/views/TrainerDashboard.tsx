@@ -116,7 +116,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
                               <p className="text-xs text-gray-500 truncate">{client.email}</p>
                             </div>
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold whitespace-nowrap hidden sm:block">
-                              {client.plan || 'Sin plan'}
+                              {client.plan ? getPlanName(client.plan) : 'Sin plan'}
                             </span>
                             <div className="flex gap-2">
                               <button onClick={() => setSelectedClient(client)}
@@ -124,7 +124,8 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
                                 Ver →
                               </button>
                               <button onClick={() => archiveClient(client.id)}
-                                className="px-3 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-200 hidden sm:block">
+                                className="px-3 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-200">
+                                {/* Removed hidden sm:block to make visible on mobile */}
                                 Archivar
                               </button>
                             </div>
