@@ -13,6 +13,14 @@ async function startServer() {
 
   app.use(express.json());
 
+  if (!process.env.AUTH_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("AUTH_SECRET environment variable is required in production.");
+    } else {
+      console.warn("WARNING: AUTH_SECRET environment variable is not set. Authentication will not work correctly.");
+    }
+  }
+
   // Set up Auth.js
   app.use(
     "/api/auth/*all",
@@ -67,7 +75,7 @@ async function startServer() {
         })
       ],
       trustHost: true,
-      secret: process.env.AUTH_SECRET || "a-very-secret-key-for-auth",
+      secret: process.env.AUTH_SECRET,
       callbacks: {
         async jwt({ token, user }) {
           if (user) {
