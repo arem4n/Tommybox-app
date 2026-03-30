@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
@@ -56,51 +56,60 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
 
   // Derived Stats
   const totalSessions = sessions.length;
-  const today = new Date();
-  const currentYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const thisMonthSessions = sessions.filter(s => {
-      const dateStr = s.date?.toDate ? s.date.toDate().toISOString() : s.date;
-      return dateStr?.startsWith(currentYearMonth);
-  }).length;
 
-  const todayStr = today.toISOString().split('T')[0];
-  const futureSessions = sessions
-      .filter(s => {
-          const dateStr = s.date?.toDate ? s.date.toDate().toISOString().split('T')[0] : s.date;
-          return dateStr >= todayStr;
-      })
-      .sort((a, b) => {
-          const dateA = a.date?.toDate ? a.date.toDate().toISOString() : a.date;
-          const dateB = b.date?.toDate ? b.date.toDate().toISOString() : b.date;
-          return dateA.localeCompare(dateB);
-      });
-  const nextSession = futureSessions[0];
-  const nextSessionLabel = nextSession
-      ? `${nextSession.date?.toDate ? nextSession.date.toDate().toISOString().split('T')[0] : nextSession.date} ${nextSession.time || ''}`
-      : 'Sin agendar';
+  const thisMonthSessions = useMemo(() => {
+    const today = new Date();
+    const currentYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    return sessions.filter(s => {
+        const dateStr = s.date?.toDate ? s.date.toDate().toISOString() : s.date;
+        return dateStr?.startsWith(currentYearMonth);
+    }).length;
+  }, [sessions]);
+
+  const { futureSessions, nextSessionLabel } = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const future = sessions
+        .filter(s => {
+            const dateStr = s.date?.toDate ? s.date.toDate().toISOString().split('T')[0] : s.date;
+            return dateStr >= todayStr;
+        })
+        .sort((a, b) => {
+            const dateA = a.date?.toDate ? a.date.toDate().toISOString() : a.date;
+            const dateB = b.date?.toDate ? b.date.toDate().toISOString() : b.date;
+            return dateA.localeCompare(dateB);
+        });
+    const next = future[0];
+    const nextLabel = next
+        ? `${next.date?.toDate ? next.date.toDate().toISOString().split('T')[0] : next.date} ${next.time || ''}`
+        : 'Sin agendar';
+    return { futureSessions: future, nextSessionLabel: nextLabel };
+  }, [sessions]);
 
   const currentPlan = user?.plan || 'Sin plan';
 
-  // Group sessions by month for BarChart
-  const groupSessionsByMonth = (sessionsArr: any[]) => {
-      const counts: Record<string, number> = {};
-      sessionsArr.forEach(s => {
-          const dateObj = s.date?.toDate ? s.date.toDate() : new Date(s.date);
-          if (isNaN(dateObj.getTime())) return;
-          const monthName = dateObj.toLocaleString('es-ES', { month: 'short' });
-          const key = `${monthName} ${dateObj.getFullYear()}`;
-          counts[key] = (counts[key] || 0) + 1;
-      });
-      return Object.entries(counts).map(([month, count]) => ({ month, sesiones: count }));
-  };
-  const sessionsByMonth = groupSessionsByMonth(sessions);
+  const sessionsByMonth = useMemo(() => {
+    const counts: Record<string, number> = {};
+    sessions.forEach(s => {
+        const dateObj = s.date?.toDate ? s.date.toDate() : new Date(s.date);
+        if (isNaN(dateObj.getTime())) return;
+        const monthName = dateObj.toLocaleString('es-ES', { month: 'short' });
+        const key = `${monthName} ${dateObj.getFullYear()}`;
+        counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts).map(([month, count]) => ({ month, sesiones: count }));
+  }, [sessions]);
 
-  const uniqueExercises = Array.from(new Set(metrics.map(m => (m as any).exercise)));
+  const uniqueExercises = useMemo(() =>
+    Array.from(new Set(metrics.map(m => (m as any).exercise)))
+  , [metrics]);
 
   // Sort ascending for chart
-  const filteredMetrics = [...metrics]
+  const filteredMetrics = useMemo(() =>
+    [...metrics]
       .filter(m => (m as any).exercise === selectedExercise)
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => a.date.localeCompare(b.date))
+  , [metrics, selectedExercise]);
 
   const handleSaveProfile = async () => {
       if (!editName.trim() || !user?.id) return;
