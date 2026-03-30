@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Lock, Calendar, Check, Users } from 'lucide-react';
 import { db } from '../../services/firebase';
+import { recalculateGamification } from '../../services/gamification';
 import { collection, query, onSnapshot, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc } from 'firebase/firestore';
 
 interface Session {
@@ -204,6 +205,7 @@ const AgendaSection = ({ user }: { user: any }) => {
           createdAt: Timestamp.now()
         });
 
+        recalculateGamification(user.id).catch(console.error);
         setModal({ ...modal, type: 'success' });
       } catch(e) {
         console.error(e);
