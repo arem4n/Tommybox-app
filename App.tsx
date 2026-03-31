@@ -10,6 +10,7 @@ import { getUserProfile, createUserProfile, updateUserProfile } from './services
 import LoginView from './components/views/LoginView';
 import DashboardLayout from './components/views/DashboardLayout';
 import ProtectedRoute from './components/views/ProtectedRoute';
+import ResetPasswordView from './components/views/ResetPasswordView';
 import { Loader2 } from 'lucide-react';
 
 const createDefaultGamificationProfile = (userId: string): GamificationProfile => ({
@@ -128,6 +129,7 @@ const App: React.FC = () => {
 
   return (
     <Routes>
+        <Route path="/reset-password" element={<ResetPasswordView />} />
         <Route
             path="/"
             element={

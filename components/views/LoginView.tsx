@@ -1,5 +1,5 @@
 import HomeView from "./HomeView";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { ShieldCheck, Mail, Lock } from 'lucide-react';
 import { View, UserProfile } from '../../types';
 import { signInWithEmail, signUpWithEmail } from '../../lib/auth';
@@ -22,21 +22,21 @@ interface RegistrationModalProps {
 const ONBOARDING_PLANS = [
   {
     id: "plan_1",
-    name: "1 Sesión / Semana",
+    name: "Esencial",
     price: 70000,
     badge: null,
     features: ["4 sesiones al mes", "Programa personalizado", "Seguimiento de progreso"],
   },
   {
     id: "plan_2",
-    name: "2 Sesiones / Semana",
+    name: "Avanzado",
     price: 80000,
     badge: "Más Popular",
     features: ["8 sesiones al mes", "Programa personalizado", "Seguimiento de progreso", "Chat con entrenador"],
   },
   {
     id: "plan_3",
-    name: "3 Sesiones / Semana",
+    name: "Elite",
     price: 90000,
     badge: null,
     features: ["12 sesiones al mes", "Programa personalizado", "Seguimiento de progreso", "Chat con entrenador", "Acceso prioritario"],
@@ -50,7 +50,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ userToComplete, o
 
   const handleNextStep = () => {
     if (!userData.displayName || !userData.birthDate) {
-      alert("Por favor, completa todos los campos.");
+      showAlert("Por favor, completa todos los campos.");
       return;
     }
     setStep(2);
@@ -146,7 +146,11 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ userToComplete, o
   );
 };
 
-const LoginView: React.FC<LoginViewProps> = ({ setCurrentView, isLoggedIn, handleLogin, completeRegistration, pendingCompletionUser, setPendingCompletionUser }) => {
+import { useModal } from "../../contexts/ModalContext";
+
+const LoginView: React.FC<LoginViewProps> = ({
+ setCurrentView, isLoggedIn, handleLogin, completeRegistration, pendingCompletionUser, setPendingCompletionUser }) => {
+  const { showAlert } = useModal();
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 

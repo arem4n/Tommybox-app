@@ -1,8 +1,10 @@
+import { getPlanLimit } from '../../utils/plans';
+import { useModal } from "../../contexts/ModalContext";
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Lock, Calendar, Check, Users } from 'lucide-react';
 import { db } from '../../services/firebase';
 import { recalculateGamification } from '../../services/gamification';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, getDocs, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc } from 'firebase/firestore';
 
 interface Session {
   id: string;
@@ -151,7 +153,7 @@ const AgendaSection = ({ user }: { user: any }) => {
 
       if (isTrainer) {
            if (existingSession) {
-               alert(`Sesión agendada con: ${existingSession.clientName}`);
+               showAlert(`Sesión agendada con: ${existingSession.clientName}`);
            }
            return;
       }
@@ -265,7 +267,7 @@ const AgendaSection = ({ user }: { user: any }) => {
           >
               {myBooking && (
                   <div className="flex flex-col items-center animate-scale-up">
-                      <span className="text-xl">🥊</span>
+                      <span className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl">🥊</span>
                       <span className="text-[10px] font-bold text-blue-700 hidden sm:inline">Mi Sesión</span>
                   </div>
               )}
@@ -295,9 +297,9 @@ const AgendaSection = ({ user }: { user: any }) => {
   return (
     <section className="container mx-auto max-w-5xl">
        {/* Header */}
-       <div className="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-           <div className="mb-4 md:mb-0">
-               <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+       <div className="flex flex-col md:flex-row justify-between items-center mb-6 lg:mb-8 bg-white p-4 lg:p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100">
+           <div className="mb-4 lg:mb-6 lg:mb-8 md:mb-0">
+               <h2 className="text-2xl lg:text-3xl lg:text-4xl font-black text-gray-900 flex items-center gap-2">
                    <Calendar className="text-blue-600" /> Agenda Semanal
                </h2>
                <p className="text-gray-500 text-sm">
@@ -305,7 +307,7 @@ const AgendaSection = ({ user }: { user: any }) => {
                </p>
            </div>
 
-           <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-xl">
+           <div className="flex items-center gap-4 lg:gap-6 lg:p-6 lg:p-8 bg-gray-50 p-2 rounded-xl">
                <button onClick={() => changeWeek(-1)} className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-gray-600">
                    <ChevronLeft size={20} />
                </button>
@@ -326,7 +328,7 @@ const AgendaSection = ({ user }: { user: any }) => {
        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
            {/* Days Header */}
            <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
-               <div className="p-2 sm:p-4 text-center border-r border-gray-100 flex items-center justify-center">
+               <div className="p-2 sm:p-4 lg:p-6 lg:p-8 text-center border-r border-gray-100 flex items-center justify-center">
                    <span className="text-xs font-bold text-gray-400">HORA</span>
                </div>
                {days.map((day, index) => {
@@ -335,9 +337,9 @@ const AgendaSection = ({ user }: { user: any }) => {
                    const isToday = new Date().toDateString() === date.toDateString();
 
                    return (
-                       <div key={day} className={`p-2 sm:p-4 text-center border-r border-gray-100 last:border-r-0 ${isToday ? 'bg-blue-50' : ''}`}>
+                       <div key={day} className={`p-2 sm:p-4 lg:p-6 lg:p-8 text-center border-r border-gray-100 last:border-r-0 ${isToday ? 'bg-blue-50' : ''}`}>
                            <p className={`text-[10px] sm:text-xs font-bold uppercase mb-1 ${isToday ? 'text-blue-600' : 'text-gray-400'}`}>{day}</p>
-                           <p className={`text-sm sm:text-lg font-black ${isToday ? 'text-blue-700' : 'text-gray-800'}`}>
+                           <p className={`text-sm sm:text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-black ${isToday ? 'text-blue-700' : 'text-gray-800'}`}>
                                {date.getDate()}
                            </p>
                        </div>
@@ -349,7 +351,7 @@ const AgendaSection = ({ user }: { user: any }) => {
            <div className="divide-y divide-gray-100">
                {times.map(time => (
                    <div key={time} className="grid grid-cols-7">
-                       <div className="p-2 sm:p-4 text-center border-r border-gray-100 flex items-center justify-center bg-gray-50/50">
+                       <div className="p-2 sm:p-4 lg:p-6 lg:p-8 text-center border-r border-gray-100 flex items-center justify-center bg-gray-50/50">
                            <span className="text-xs font-bold text-gray-500">{time}</span>
                        </div>
                        {days.map((_, dayIndex) => renderCell(dayIndex, time))}
@@ -360,22 +362,22 @@ const AgendaSection = ({ user }: { user: any }) => {
 
        {/* Modals */}
        {modal.type !== 'none' && (
-           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 lg:p-6 lg:p-8 animate-fade-in">
                <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative">
                    <button
                         onClick={() => setModal({ ...modal, type: 'none' })}
-                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                        className="absolute top-4 lg:p-6 lg:p-8 right-4 text-gray-400 hover:text-gray-600"
                    >
                        <X size={20} />
                    </button>
 
                    {modal.type === 'no-plan' && (
                        <div className="text-center">
-                           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-red-500">
                                <Lock size={32} />
                            </div>
-                           <h3 className="text-xl font-bold text-gray-900 mb-2">Acceso Restringido</h3>
-                           <p className="text-gray-500 mb-6">{modal.message}</p>
+                           <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Acceso Restringido</h3>
+                           <p className="text-gray-500 mb-6 lg:mb-8">{modal.message}</p>
                            <button
                                onClick={() => { setModal({ ...modal, type: 'none' }); }}
                                className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
@@ -387,11 +389,11 @@ const AgendaSection = ({ user }: { user: any }) => {
 
                    {modal.type === 'cancel' && (
                        <div className="text-center">
-                           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-red-600">
                                <X size={32} />
                            </div>
-                           <h3 className="text-xl font-bold text-gray-900 mb-2">Cancelar Reserva</h3>
-                           <p className="text-gray-500 mb-6">
+                           <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Cancelar Reserva</h3>
+                           <p className="text-gray-500 mb-6 lg:mb-8">
                                ¿Estás seguro de cancelar tu sesión para el <br/>
                                <span className="font-bold text-gray-900">
                                    {days[modal.sessionDay!]} a las {modal.sessionTime}
@@ -417,11 +419,11 @@ const AgendaSection = ({ user }: { user: any }) => {
 
                    {modal.type === 'confirm' && (
                        <div className="text-center">
-                           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-blue-600">
                                <Calendar size={32} />
                            </div>
-                           <h3 className="text-xl font-bold text-gray-900 mb-2">Confirmar Reserva</h3>
-                           <p className="text-gray-500 mb-6">
+                           <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Confirmar Reserva</h3>
+                           <p className="text-gray-500 mb-6 lg:mb-8">
                                ¿Agendar sesión para el <br/>
                                <span className="font-bold text-gray-900">
                                    {days[modal.sessionDay!]} a las {modal.sessionTime}
@@ -447,11 +449,11 @@ const AgendaSection = ({ user }: { user: any }) => {
 
                    {modal.type === 'success' && (
                        <div className="text-center">
-                           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600 animate-scale-up">
+                           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-green-600 animate-scale-up">
                                <Check size={32} strokeWidth={4} />
                            </div>
-                           <h3 className="text-xl font-bold text-gray-900 mb-2">¡Reserva Exitosa!</h3>
-                           <p className="text-gray-500 mb-6">Tu sesión ha sido agendada correctamente.</p>
+                           <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">¡Reserva Exitosa!</h3>
+                           <p className="text-gray-500 mb-6 lg:mb-8">Tu sesión ha sido agendada correctamente.</p>
 
                            <div className="space-y-3">
                                <a

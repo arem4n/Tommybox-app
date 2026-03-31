@@ -1,3 +1,4 @@
+import { ModalProvider } from "./contexts/ModalContext";
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -14,7 +15,7 @@ root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
-        <App />
+        <ModalProvider><App /></ModalProvider>
       </BrowserRouter>
     </ErrorBoundary>
   </React.StrictMode>
