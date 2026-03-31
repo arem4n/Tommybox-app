@@ -5,7 +5,8 @@ import CommunitySection from './CommunitySection';
 import PlansSection from './PlansSection';
 import ClientStatsView from './ClientStatsView';
 import TrainerDashboard from './TrainerDashboard';
-import { Calendar, Users, Star, User, LogOut } from 'lucide-react';
+import { Calendar, Users, Star, User, LogOut, Trophy } from 'lucide-react';
+import GamificationView from './GamificationView';
 import { signOut } from '../../lib/auth';
 
 interface DashboardLayoutProps {
@@ -40,6 +41,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
     { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'community', label: 'Comunidad', icon: Users },
     { id: 'plan', label: 'Mi Plan', icon: Star },
+    { id: 'logros', label: 'Logros', icon: Trophy },
     { id: 'profile', label: 'Mi Perfil', icon: User },
   ];
 
@@ -101,6 +103,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
           {currentTab === 'agenda' && <AgendaSection user={user} />}
           {currentTab === 'community' && <CommunitySection user={user} />}
           {currentTab === 'plan' && <PlansSection user={user} />}
+          {currentTab === 'logros' && <GamificationView user={user} />}
           {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => {}} />}
         </div>
       </main>
