@@ -98,22 +98,22 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
             <h1 className="text-4xl font-extrabold text-blue-900 md:text-6xl leading-tight">
               Entrena con un programa funcional, personalizado y respaldado por ciencia para mejorar tu salud, fuerza y movilidad.
             </h1>
-            <p className="mt-6 text-lg text-gray-600 md:text-xl leading-relaxed">
+            <p className="mt-6 text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl text-gray-600 md:text-xl lg:text-2xl lg:text-3xl lg:text-4xl leading-relaxed">
               Buscas un entrenamiento que entienda tu cuerpo, tus limitaciones y tu estilo de vida. Un método que se adapte a ti, con progresión dinámica y enfoque personalizado, para que cada sesión te acerque a tus objetivos con seguridad y efectividad, sin planes rígidos ni fórmulas genéricas.
             </p>
-            <button onClick={() => setShowLoginModal(true)} className="mt-8 transform rounded-full bg-blue-600 px-8 py-3 text-lg font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-blue-700">
+            <button onClick={() => setShowLoginModal(true)} className="mt-8 transform rounded-full bg-blue-600 px-8 py-3 text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-blue-700">
               Descubre tu plan ideal
             </button>
           </div>
 
           {/* METHODOLOGY SECTION */}
           <div className="mt-20">
-            <h2 className="text-center text-3xl font-bold text-blue-800 md:text-4xl">Nuestra Metodología</h2>
+            <h2 className="text-center text-3xl lg:text-4xl font-bold text-blue-800 md:text-4xl">Nuestra Metodología</h2>
             <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left max-w-4xl mx-auto">
 
               {/* Card 1: Process */}
               <div className="rounded-2xl bg-white p-8 shadow-xl transition-transform hover:-translate-y-1 duration-300">
-                  <h3 className="flex items-center space-x-3 text-2xl font-semibold text-blue-700">
+                  <h3 className="flex items-center space-x-3 text-2xl lg:text-3xl lg:text-4xl font-semibold text-blue-700">
                       <div className="p-2 bg-blue-100 rounded-lg"><Dumbbell size={28} className="text-blue-600" /></div>
                       <span>Entrenamiento Inteligente</span>
                   </h3>
@@ -124,7 +124,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
 
               {/* Card 2: Tracking */}
               <div className="rounded-2xl bg-white p-8 shadow-xl transition-transform hover:-translate-y-1 duration-300">
-                  <h3 className="flex items-center space-x-3 text-2xl font-semibold text-blue-700">
+                  <h3 className="flex items-center space-x-3 text-2xl lg:text-3xl lg:text-4xl font-semibold text-blue-700">
                       <div className="p-2 bg-blue-100 rounded-lg"><BarChart size={28} className="text-blue-600" /></div>
                       <span>Resultados Medibles</span>
                   </h3>
@@ -135,7 +135,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
 
               {/* Added Card 3: Experience */}
                <div className="rounded-2xl bg-white p-8 shadow-xl transition-transform hover:-translate-y-1 duration-300">
-                  <h3 className="flex items-center space-x-3 text-2xl font-semibold text-blue-700">
+                  <h3 className="flex items-center space-x-3 text-2xl lg:text-3xl lg:text-4xl font-semibold text-blue-700">
                       <div className="p-2 bg-blue-100 rounded-lg"><Star size={28} className="text-blue-600" /></div>
                       <span>Atención Personalizada</span>
                   </h3>
@@ -146,7 +146,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
 
                {/* Added Card 4: Community */}
                <div className="rounded-2xl bg-white p-8 shadow-xl transition-transform hover:-translate-y-1 duration-300">
-                  <h3 className="flex items-center space-x-3 text-2xl font-semibold text-blue-700">
+                  <h3 className="flex items-center space-x-3 text-2xl lg:text-3xl lg:text-4xl font-semibold text-blue-700">
                       <div className="p-2 bg-blue-100 rounded-lg"><Quote size={28} className="text-blue-600" /></div>
                       <span>Comunidad Activa</span>
                   </h3>
@@ -162,7 +162,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
         <div className="mt-32 pb-20 bg-blue-900 w-full pt-20 skew-y-3 -mb-10">
           <div className="-skew-y-3 container mx-auto px-4 relative">
              <div className="text-center mb-12 relative z-10">
-                 <h2 className="text-3xl font-bold text-white md:text-4xl">Lo que dicen nuestros atletas</h2>
+                 <h2 className="text-3xl lg:text-4xl font-bold text-white md:text-4xl">Lo que dicen nuestros atletas</h2>
                  <div className="mt-4 w-24 h-1 bg-blue-400 mx-auto rounded-full"></div>
              </div>
 
@@ -172,7 +172,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
              >
                 <div className="overflow-hidden px-4">
                   <div
-                    className="flex transition-transform duration-500 ease-in-out gap-6"
+                    className="flex transition-transform duration-500 ease-in-out gap-6 lg:p-8"
                     style={{ transform: `translateX(-${(currentIndex * (100 / itemsPerPage))}%)` }}
                   >
                     {testimonials.map((testimonial, idx) => (
@@ -182,12 +182,12 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
                         style={{ width: `calc(${100 / itemsPerPage}% - ${((itemsPerPage - 1) * 24) / itemsPerPage}px)` }}
                       >
                          <div className="bg-white rounded-3xl p-8 shadow-2xl h-full flex flex-col justify-between transform transition-transform hover:scale-[1.02] duration-300 relative">
-                             <Quote className="absolute top-6 left-6 text-blue-100 w-12 h-12 z-0" />
-                             <p className="text-gray-700 italic text-lg leading-relaxed relative z-10 font-medium mb-6">"{testimonial.text}"</p>
+                             <Quote className="absolute top-6 lg:p-8 left-6 text-blue-100 w-12 h-12 z-0" />
+                             <p className="text-gray-700 italic text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl leading-relaxed relative z-10 font-medium mb-6 lg:mb-8">"{testimonial.text}"</p>
 
                              <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-auto">
                                  <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                                     <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl">
                                          {testimonial.author.charAt(0)}
                                      </div>
                                      <p className="font-bold text-blue-900">{testimonial.author}</p>
@@ -237,27 +237,27 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
 
       {/* LOGIN MODAL */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 lg:p-6 lg:p-8">
           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative">
             <button
               onClick={() => setShowLoginModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 lg:p-6 lg:p-8 right-4 text-gray-400 hover:text-gray-600"
             >
               <X size={20} />
             </button>
 
-            <h2 className="text-2xl font-black text-gray-900 mb-6 text-center">
+            <h2 className="text-2xl lg:text-3xl lg:text-4xl font-black text-gray-900 mb-6 lg:mb-8 text-center">
               {isRegistering ? 'Crear cuenta' : 'Bienvenido de vuelta'}
             </h2>
 
             {authError && (
-              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4 text-center border border-red-100">{authError}</p>
+              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4 lg:mb-6 lg:mb-8 text-center border border-red-100">{authError}</p>
             )}
 
             <form onSubmit={async (e) => {
               e.preventDefault();
               await onEmailAuth(email, password, isRegistering);
-            }} className="space-y-4 mb-4">
+            }} className="space-y-4 mb-4 lg:mb-6 lg:mb-8">
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="tu@correo.com" required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" />

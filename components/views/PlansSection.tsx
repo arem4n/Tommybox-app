@@ -6,7 +6,7 @@ import { Dumbbell, Zap, Award, CreditCard, Building2, X } from 'lucide-react';
 const DEFAULT_PLANS = [
   {
     id: 'plan_1',
-    name: '1 Sesión / Semana',
+    name: 'Esencial',
     price: 70000,
     description: 'Perfecto para establecer una base sólida. Incluye 4 sesiones al mes, distribuidas en una por semana.',
     icon: 'Dumbbell',
@@ -15,7 +15,7 @@ const DEFAULT_PLANS = [
   },
   {
     id: 'plan_2',
-    name: '2 Sesiones / Semana',
+    name: 'Avanzado',
     price: 80000,
     description: 'Ideal para un progreso constante. Incluye 8 sesiones al mes, distribuidas en dos por semana.',
     icon: 'Zap',
@@ -24,7 +24,7 @@ const DEFAULT_PLANS = [
   },
   {
     id: 'plan_3',
-    name: '3 Sesiones / Semana',
+    name: 'Elite',
     price: 90000,
     description: 'Para un compromiso total. Incluye 12 sesiones al mes, distribuidas en tres por semana.',
     icon: 'Award',
@@ -41,7 +41,7 @@ const renderIcon = (iconName: string, isCurrent: boolean, featured: boolean) => 
   if (iconName === 'Award') iconComponent = <Award size={24} />;
 
   return (
-    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${colorClass}`}>
+    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 lg:mb-8 ${colorClass}`}>
       {iconComponent}
     </div>
   );
@@ -101,8 +101,8 @@ const PlansSection = ({ user }: { user: any }) => {
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in relative">
       <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">Elige el plan perfecto para ti</h2>
-          <p className="text-xl text-gray-500">Transforma tu vida con nuestros programas de entrenamiento personalizado.</p>
+          <h2 className="text-4xl font-black text-gray-900 mb-4 lg:mb-6 lg:mb-8 tracking-tight">Elige el plan perfecto para ti</h2>
+          <p className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl text-gray-500">Transforma tu vida con nuestros programas de entrenamiento personalizado.</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8 items-center">
@@ -136,8 +136,8 @@ const PlansSection = ({ user }: { user: any }) => {
               <div className="flex-1">
                 {renderIcon(plan.icon, isCurrent, isFeatured)}
 
-                <h3 className="text-2xl font-black text-gray-900 mb-2">{plan.name}</h3>
-                <p className="text-gray-500 mb-6 min-h-[48px]">{plan.description}</p>
+                <h3 className="text-2xl lg:text-3xl lg:text-4xl font-black text-gray-900 mb-2">{plan.name}</h3>
+                <p className="text-gray-500 mb-6 lg:mb-8 min-h-[48px]">{plan.description}</p>
 
                 <div className="mb-8">
                   <span className="text-5xl font-extrabold text-gray-900">
@@ -163,7 +163,7 @@ const PlansSection = ({ user }: { user: any }) => {
               <button
                 onClick={() => setSelectedPlanForPayment(plan)}
                 disabled={isCurrent}
-                className={`w-full py-4 rounded-2xl font-black text-lg transition-all ${
+                className={`w-full py-4 rounded-2xl font-black text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl transition-all ${
                   isCurrent
                     ? 'bg-green-500 text-white cursor-not-allowed shadow-md shadow-green-500/30'
                     : isFeatured
@@ -180,30 +180,30 @@ const PlansSection = ({ user }: { user: any }) => {
 
       {/* Payment Modal */}
       {selectedPlanForPayment && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 lg:p-6 lg:p-8">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full relative shadow-2xl overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => setSelectedPlanForPayment(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="absolute top-4 lg:p-6 lg:p-8 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X size={24} />
             </button>
 
-            <h2 className="text-3xl font-black text-gray-900 mb-2 text-center">Confirmar Plan</h2>
-            <p className="text-center text-gray-500 font-medium text-lg mb-8">
+            <h2 className="text-3xl lg:text-4xl font-black text-gray-900 mb-2 text-center">Confirmar Plan</h2>
+            <p className="text-center text-gray-500 font-medium text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl mb-8">
               {selectedPlanForPayment.name} — <span className="font-bold text-blue-600">${(selectedPlanForPayment.price/1000).toFixed(0)}.000</span>
             </p>
 
             <div className="space-y-6">
               {/* Option 1: Card */}
-              <div className="border border-gray-200 rounded-2xl p-6 bg-gray-50/50">
-                <div className="flex items-center gap-3 mb-4">
+              <div className="border border-gray-200 rounded-2xl p-6 lg:p-8 bg-gray-50/50">
+                <div className="flex items-center gap-3 mb-4 lg:mb-6 lg:mb-8">
                   <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
                     <CreditCard size={24} />
                   </div>
-                  <h3 className="font-bold text-xl text-gray-900">Pagar con tarjeta</h3>
+                  <h3 className="font-bold text-xl lg:text-2xl lg:text-3xl lg:text-4xl text-gray-900">Pagar con tarjeta</h3>
                 </div>
-                <p className="text-sm text-gray-600 mb-6">
+                <p className="text-sm text-gray-600 mb-6 lg:mb-8">
                   Integración con Webpay próximamente. Tu plan será activado manualmente tras confirmar.
                 </p>
                 <button
@@ -215,14 +215,14 @@ const PlansSection = ({ user }: { user: any }) => {
               </div>
 
               {/* Option 2: Transfer */}
-              <div className="border border-gray-200 rounded-2xl p-6 bg-gray-50/50">
-                <div className="flex items-center gap-3 mb-4">
+              <div className="border border-gray-200 rounded-2xl p-6 lg:p-8 bg-gray-50/50">
+                <div className="flex items-center gap-3 mb-4 lg:mb-6 lg:mb-8">
                   <div className="p-3 bg-green-100 text-green-600 rounded-xl">
                     <Building2 size={24} />
                   </div>
-                  <h3 className="font-bold text-xl text-gray-900">Transferencia bancaria</h3>
+                  <h3 className="font-bold text-xl lg:text-2xl lg:text-3xl lg:text-4xl text-gray-900">Transferencia bancaria</h3>
                 </div>
-                <div className="bg-white rounded-xl p-4 text-sm font-medium text-gray-700 space-y-2 mb-6 border border-gray-100">
+                <div className="bg-white rounded-xl p-4 lg:p-6 lg:p-8 text-sm font-medium text-gray-700 space-y-2 mb-6 lg:mb-8 border border-gray-100">
                   <p><span className="text-gray-500 w-24 inline-block">Banco:</span> BancoEstado</p>
                   <p><span className="text-gray-500 w-24 inline-block">Cuenta Rut:</span> 12.345.678-9</p>
                   <p><span className="text-gray-500 w-24 inline-block">N° Cuenta:</span> 123456789</p>

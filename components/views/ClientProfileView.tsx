@@ -1,9 +1,16 @@
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { storage, auth } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, Timestamp, orderBy, getDocs } from 'firebase/firestore';
 import { ChevronLeft, Download, Upload, Activity, FileText } from 'lucide-react';
 
+import { useModal } from "../../contexts/ModalContext";
+
 const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void }) => {
+  const { showAlert, showConfirm } = useModal();
   const [activeTab, setActiveTab] = useState<'Rendimiento' | 'Observaciones'>('Rendimiento');
   const [metrics, setMetrics] = useState<any[]>([]);
   const [observations, setObservations] = useState<any[]>([]);
@@ -14,6 +21,37 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
   const [metricReps, setMetricReps] = useState('');
   const [metricRPE, setMetricRPE] = useState('');
   const [metricDate, setMetricDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !user?.id) return;
+    const file = e.target.files[0];
+
+    try {
+      if (!storage) throw new Error("Storage not initialized");
+      const storageRef = ref(storage, `profilePhotos/${user.id}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await updateDoc(doc(db, 'users', user.id), { photoUrl: url });
+      showAlert('¡Éxito!', 'Foto de perfil actualizada', 'success');
+    } catch (error) {
+      console.error(error);
+      showAlert('Error', 'No se pudo subir la foto', 'error');
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    try {
+      if (!auth || !user?.email) return;
+      await sendPasswordResetEmail(auth, user.email, {
+        url: window.location.origin + '/reset-password'
+      });
+      showAlert('¡Correo enviado!', 'Revisa tu bandeja de entrada para restablecer tu contraseña.', 'success');
+    } catch (error) {
+      console.error(error);
+      showAlert('Error', 'No se pudo enviar el correo de recuperación.', 'error');
+    }
+  };
+
 
   // Observation Form State
   const [obsComment, setObsComment] = useState('');
@@ -73,7 +111,7 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
             });
             count++;
         }
-        alert(`Se importaron ${count} métricas correctamente.`);
+        showAlert(`Se importaron ${count} métricas correctamente.`);
     } catch(e) {
         console.error("Error importing CSV: ", e);
     }
@@ -115,9 +153,9 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col animate-fade-in">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm p-4">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm p-4 lg:p-6 lg:p-8">
             <div className="container mx-auto px-4 max-w-6xl">
-                <div className="flex items-center gap-4 mb-6 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-4 lg:gap-6 lg:p-6 lg:p-8 mb-6 lg:mb-8 p-4 lg:p-6 lg:p-8 bg-white rounded-2xl border border-gray-100 shadow-sm">
                   <button onClick={onBack} className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline">
                     ← Clientes
                   </button>
@@ -138,7 +176,7 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                   </button>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 lg:gap-6 lg:p-6 lg:p-8">
                     <button
                         onClick={() => setActiveTab('Rendimiento')}
                         className={`flex items-center gap-2 py-3 px-5 font-bold text-sm rounded-t-xl transition-colors ${
@@ -163,15 +201,15 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
 
             {activeTab === 'Rendimiento' && (
                 <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-gray-900">Agregar Métrica</h3>
+                    <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="flex justify-between items-center mb-6 lg:mb-8">
+                            <h3 className="text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900">Agregar Métrica</h3>
                             <label className="flex items-center gap-2 px-4 py-2 border-2 border-gray-200 text-gray-700 text-sm font-bold rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
                               <Upload size={16} /> Importar CSV
                               <input type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
                             </label>
                         </div>
-                        <form onSubmit={handleAddMetric} className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <form onSubmit={handleAddMetric} className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6 lg:p-6 lg:p-8">
                             <input type="date" value={metricDate} onChange={e => setMetricDate(e.target.value)} required className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm" />
                             <input type="text" value={metricExercise} onChange={e => setMetricExercise(e.target.value)} placeholder="Ejercicio" required className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm" />
                             <input type="number" step="any" value={metricLoad} onChange={e => setMetricLoad(e.target.value)} placeholder="Carga (kg)" required className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm" />
@@ -188,21 +226,21 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                                        <th className="p-4 font-bold border-b border-gray-100">Fecha</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Ejercicio</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Carga (kg)</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Reps</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">RPE</th>
+                                        <th className="p-4 lg:p-6 lg:p-8 font-bold border-b border-gray-100">Fecha</th>
+                                        <th className="p-4 lg:p-6 lg:p-8 font-bold border-b border-gray-100">Ejercicio</th>
+                                        <th className="p-4 lg:p-6 lg:p-8 font-bold border-b border-gray-100">Carga (kg)</th>
+                                        <th className="p-4 lg:p-6 lg:p-8 font-bold border-b border-gray-100">Reps</th>
+                                        <th className="p-4 lg:p-6 lg:p-8 font-bold border-b border-gray-100">RPE</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {metrics.map(m => (
                                         <tr key={m.id} className="hover:bg-blue-50/30 transition-colors">
-                                            <td className="p-4 text-sm text-gray-900">{m.date}</td>
-                                            <td className="p-4 text-sm font-bold text-gray-900">{m.exercise}</td>
-                                            <td className="p-4 text-sm text-gray-700 font-medium">{m.load} kg</td>
-                                            <td className="p-4 text-sm text-gray-700">{m.reps}</td>
-                                            <td className="p-4 text-sm text-gray-500">{m.rpe || '-'}</td>
+                                            <td className="p-4 lg:p-6 lg:p-8 text-sm text-gray-900">{m.date}</td>
+                                            <td className="p-4 lg:p-6 lg:p-8 text-sm font-bold text-gray-900">{m.exercise}</td>
+                                            <td className="p-4 lg:p-6 lg:p-8 text-sm text-gray-700 font-medium">{m.load} kg</td>
+                                            <td className="p-4 lg:p-6 lg:p-8 text-sm text-gray-700">{m.reps}</td>
+                                            <td className="p-4 lg:p-6 lg:p-8 text-sm text-gray-500">{m.rpe || '-'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -217,9 +255,9 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
 
             {activeTab === 'Observaciones' && (
                 <div className="grid md:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Nueva Observación</h3>
-                        <form onSubmit={handleAddObservation} className="flex flex-col gap-4">
+                    <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                        <h3 className="text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 lg:mb-6 lg:mb-8">Nueva Observación</h3>
+                        <form onSubmit={handleAddObservation} className="flex flex-col gap-4 lg:gap-6 lg:p-6 lg:p-8">
                             <input type="date" value={obsDate} onChange={e => setObsDate(e.target.value)} required className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm" />
                             <textarea value={obsComment} onChange={e => setObsComment(e.target.value)} placeholder="Ej: Molestia en rodilla derecha al bajar..." required rows={4} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm resize-none" />
                             <button type="submit" className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20">
@@ -228,11 +266,11 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                         </form>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6">Historial</h3>
+                    <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 className="text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 lg:mb-8">Historial</h3>
                         <div className="space-y-2">
                             {observations.map(obs => (
-                              <div key={obs.id} className="flex gap-4">
+                              <div key={obs.id} className="flex gap-4 lg:gap-6 lg:p-6 lg:p-8">
                                 <div className="flex flex-col items-center">
                                   <div className="w-4 h-4 rounded-full bg-blue-600 border-4 border-blue-100 mt-1 shrink-0"></div>
                                   <div className="w-0.5 flex-1 bg-gray-200 mt-2 mb-2"></div>

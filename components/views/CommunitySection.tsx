@@ -3,7 +3,10 @@ import { db } from '../../services/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 import { Heart, MessageCircle, Share2, MoreHorizontal, Camera, Video, Smile } from 'lucide-react';
 
+import { useModal } from "../../contexts/ModalContext";
+
 const CommunitySection = ({ user }: { user: any }) => {
+  const { showAlert, showConfirm } = useModal();
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [toast, setToast] = useState<string | null>(null);
@@ -39,35 +42,6 @@ const CommunitySection = ({ user }: { user: any }) => {
     }
   };
 
-  const handleDelete = async (postId: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta publicación?')) {
-      try {
-        await deleteDoc(doc(db, 'community', postId));
-      } catch (error) {
-        console.error("Error deleting post: ", error);
-      }
-    }
-  };
-
-  const handleLike = async (postId: string, currentLikes: string[]) => {
-    if (!user?.id) return;
-    const postRef = doc(db, 'community', postId);
-    const hasLiked = currentLikes.includes(user.id);
-
-    try {
-      if (hasLiked) {
-        await updateDoc(postRef, {
-          likes: arrayRemove(user.id)
-        });
-      } else {
-        await updateDoc(postRef, {
-          likes: arrayUnion(user.id)
-        });
-      }
-    } catch (error) {
-      console.error("Error toggling like: ", error);
-    }
-  };
 
   const handleShare = (content: string) => {
     if (navigator.share) {
@@ -87,10 +61,10 @@ const CommunitySection = ({ user }: { user: any }) => {
       )}
 
       {/* Post Composer */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm mb-8 border border-gray-100">
+      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm mb-8 border border-gray-100">
         <form onSubmit={handleSubmit}>
-          <div className="flex items-start gap-4 mb-4">
-            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl shrink-0">
+          <div className="flex items-start gap-4 lg:gap-6 lg:p-6 lg:p-8 mb-4 lg:mb-6 lg:mb-8">
+            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl lg:text-2xl lg:text-3xl lg:text-4xl shrink-0">
               {user?.displayName?.[0]?.toUpperCase() || 'U'}
             </div>
             <textarea
@@ -136,7 +110,7 @@ const CommunitySection = ({ user }: { user: any }) => {
               {/* Header */}
               <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg lg:text-xl lg:text-2xl lg:text-3xl lg:text-4xl">
                     {post.displayName?.[0]?.toUpperCase() || 'A'}
                   </div>
                   <div>

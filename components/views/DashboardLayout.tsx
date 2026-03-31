@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import AgendaSection from './AgendaSection';
-import CommunitySection from './CommunitySection';
-import PlansSection from './PlansSection';
+const AgendaSection = lazy(() => import('./AgendaSection'));
+const CommunitySection = lazy(() => import('./CommunitySection'));
+const PlansSection = lazy(() => import('./PlansSection'));
 import ClientStatsView from './ClientStatsView';
-import TrainerDashboard from './TrainerDashboard';
+const TrainerDashboard = lazy(() => import('./TrainerDashboard'));
 import { Calendar, Users, Star, User, LogOut, Trophy } from 'lucide-react';
-import GamificationView from './GamificationView';
+const GamificationView = lazy(() => import('./GamificationView'));
 import { signOut } from '../../lib/auth';
 
 interface DashboardLayoutProps {
@@ -46,16 +46,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <Suspense fallback={<LoadingSpinner />}><div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         {/* Row 1 */}
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src="https://i.postimg.cc/rpM8kSt5/20251103_141407_0000.png" alt="TommyBox" className="h-8 object-contain" />
-            <span className="font-black text-xl tracking-tight hidden sm:block">TOMMYBOX</span>
+            <span className="font-black text-xl lg:text-2xl lg:text-3xl lg:text-4xl tracking-tight hidden sm:block">TOMMYBOX</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 lg:gap-6 lg:p-6 lg:p-8">
             <span className="text-sm font-medium text-gray-600 hidden sm:block">
               {user?.displayName}
             </span>
@@ -66,14 +66,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
                     {user?.displayName?.[0]?.toUpperCase() || '?'}
                 </div>
             )}
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-              title="Salir"
-            >
-              <LogOut size={20} />
-              <span className="text-sm font-medium hidden md:block">Salir</span>
-            </button>
+            <button onClick={handleLogout} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium">
+    <LogOut className="w-4 h-4" />
+    <span className="hidden sm:inline">Cerrar sesión</span>
+  </button>
           </div>
         </div>
 
@@ -107,7 +103,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
           {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => {}} />}
         </div>
       </main>
-    </div>
+    </div></Suspense>
   );
 };
 

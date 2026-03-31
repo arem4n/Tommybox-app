@@ -1,3 +1,4 @@
+import { useModal } from '../../contexts/ModalContext';
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { doc, onSnapshot, addDoc, collection, Timestamp } from 'firebase/firestore';
@@ -33,7 +34,8 @@ const RARITY_COLORS: Record<string, string> = {
 
 const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
     const [gamification, setGamification] = useState<GamificationProfile | null>(user?.gamification || null);
-    const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
+    const { showAchievement } = useModal();
+  const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
     const [canRegisterFeeling, setCanRegisterFeeling] = useState<boolean>(false);
     const [selectedFeeling, setSelectedFeeling] = useState<string>('');
     const [comment, setComment] = useState<string>('');
