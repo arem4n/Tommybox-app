@@ -1,4 +1,5 @@
 import { ModalProvider } from "./contexts/ModalContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -15,7 +16,9 @@ root.render(
 
     <ErrorBoundary>
       <BrowserRouter>
-        <ModalProvider><App /></ModalProvider>
+        <AuthProvider>
+          <ModalProvider><App /></ModalProvider>
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
 

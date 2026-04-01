@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Calendar, Dumbbell, Zap, Star } from 'lucide-react';
+import { Calendar, Dumbbell, Zap, Star, Camera } from 'lucide-react';
+import { getPlanName } from '../../utils/plans';
 
 interface Props {
   user: any;
   onUserUpdate: (updated: any) => void;
+  isTrainerView?: boolean;
 }
 
-const ClientStatsView = ({ user, onUserUpdate }: Props) => {
+const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
@@ -20,6 +22,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'Estadísticas' | 'Rendimiento' | 'Perfil'>('Estadísticas');
 
   useEffect(() => {
@@ -86,7 +89,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
     return { futureSessions: future, nextSessionLabel: nextLabel };
   }, [sessions]);
 
-  const currentPlan = user?.plan || 'Sin plan';
+  const currentPlan = user?.plan ? getPlanName(user.plan) : 'Sin plan';
 
   const sessionsByMonth = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -129,12 +132,38 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
       }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 150;
+              const scaleSize = MAX_WIDTH / img.width;
+              canvas.width = MAX_WIDTH;
+              canvas.height = img.height * scaleSize;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+              
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // Compress to 60% quality base64
+              setPhotoURL(dataUrl);
+          };
+          img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+  };
+
   return (
     <div className="max-w-6xl mx-auto animate-fade-in">
         <div className="flex border-b border-gray-200 mb-6">
             <button onClick={() => setActiveTab('Estadísticas')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Estadísticas' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Estadísticas</button>
             <button onClick={() => setActiveTab('Rendimiento')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Rendimiento' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Rendimiento</button>
-            <button onClick={() => setActiveTab('Perfil')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Perfil' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Perfil</button>
+            {!isTrainerView && (
+                <button onClick={() => setActiveTab('Perfil')} className={`py-2 px-4 border-b-2 font-medium ${activeTab === 'Perfil' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Perfil</button>
+            )}
         </div>
 
         {activeTab === 'Estadísticas' && (
@@ -253,7 +282,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
                  <h2 className="text-2xl font-black text-gray-900 mb-8 text-center">Editar Perfil</h2>
 
                  <div className="flex flex-col items-center mb-8">
-                     <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center mb-4 border-4 border-white shadow-lg">
+                     <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center mb-4 border-4 border-white shadow-lg relative group">
                        {photoURL ? (
                          <img src={photoURL} alt="avatar" className="w-full h-full object-cover" />
                        ) : (
@@ -261,22 +290,29 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
                            {editName?.[0]?.toUpperCase() || '?'}
                          </span>
                        )}
+                       <div 
+                         onClick={() => fileInputRef.current?.click()}
+                         className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                       >
+                         <Camera className="text-white" size={24} />
+                       </div>
                      </div>
 
-                     <div className="w-full max-w-sm">
-                       <label className="block text-xs font-medium text-gray-500 mb-1">
-                         URL de foto de perfil
-                       </label>
-                       <input
-                         type="url"
-                         value={photoURL}
-                         onChange={e => setPhotoURL(e.target.value)}
-                         placeholder="https://... (pega un enlace a tu foto)"
-                         className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                     <div className="w-full max-w-sm flex justify-center">
+                       <input 
+                         type="file" 
+                         accept="image/*" 
+                         capture="user"
+                         ref={fileInputRef} 
+                         onChange={handleImageUpload} 
+                         className="hidden" 
                        />
-                       <p className="text-xs text-gray-400 mt-1">
-                         Puedes usar una foto de Google, Instagram, etc.
-                       </p>
+                       <button 
+                         onClick={() => fileInputRef.current?.click()}
+                         className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                       >
+                         Cambiar Foto
+                       </button>
                      </div>
                  </div>
 
@@ -302,7 +338,7 @@ const ClientStatsView = ({ user, onUserUpdate }: Props) => {
                    </div>
                    <div className="flex justify-between text-sm">
                      <span className="text-gray-500">Plan activo</span>
-                     <span className="font-medium text-blue-600">{user?.plan || 'Sin plan'}</span>
+                     <span className="font-medium text-blue-600">{user?.plan ? getPlanName(user.plan) : 'Sin plan'}</span>
                    </div>
                    <div className="flex justify-between text-sm">
                      <span className="text-gray-500">Miembro desde</span>

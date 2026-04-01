@@ -23,6 +23,7 @@ const getStartOfWeek = (date: Date) => {
 };
 
 const AgendaSection = ({ user }: { user: any }) => {
+  const { showAlert } = useModal();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modal, setModal] = useState<{
       type: string;
@@ -141,6 +142,8 @@ const AgendaSection = ({ user }: { user: any }) => {
   };
 
   const startOfWeek = getStartOfWeek(currentDate);
+  const currentActualStartOfWeek = getStartOfWeek(new Date());
+  const canGoBack = startOfWeek > currentActualStartOfWeek;
 
   const handleSlotClick = (dayIndex: number, time: string) => {
       const slotDate = new Date(startOfWeek);
@@ -308,7 +311,11 @@ const AgendaSection = ({ user }: { user: any }) => {
            </div>
 
            <div className="flex items-center gap-4 lg:gap-6 lg:p-6 lg:p-8 bg-gray-50 p-2 rounded-xl">
-               <button onClick={() => changeWeek(-1)} className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-gray-600">
+               <button 
+                 onClick={() => canGoBack && changeWeek(-1)} 
+                 disabled={!canGoBack}
+                 className={`p-2 rounded-lg transition-all ${canGoBack ? 'hover:bg-white hover:shadow-md text-gray-600' : 'text-gray-300 cursor-not-allowed opacity-50'}`}
+               >
                    <ChevronLeft size={20} />
                </button>
                <span className="text-sm font-bold w-32 text-center">

@@ -1,33 +1,14 @@
-import React, { useState, useEffect, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { User } from 'firebase/auth';
-import { UserProfile, GamificationProfile } from './types';
-import { subscribeToAuth, signIn, signOut } from './lib/auth';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 import { db } from './services/firebase';
-import { doc, getDocFromServer, Timestamp } from 'firebase/firestore';
-import { getUserProfile, createUserProfile, updateUserProfile } from './services/db';
+import { doc, getDocFromServer } from 'firebase/firestore';
 
 import LoginView from './components/views/LoginView';
 import DashboardLayout from './components/views/DashboardLayout';
 import ProtectedRoute from './components/views/ProtectedRoute';
 import ResetPasswordView from './components/views/ResetPasswordView';
 import { Loader2 } from 'lucide-react';
-
-const createDefaultGamificationProfile = (userId: string): GamificationProfile => ({
-    userId: userId,
-    totalPoints: 0,
-    level: 1,
-    experience: 0,
-    experienceToNextLevel: 100, // Points for level 2
-    badges: [],
-    achievements: [
-      { id: 'ach_attendance_10', title: 'Asistencia de Acero', description: 'Completa 10 sesiones', points: 50, progress: 0, total: 10, completed: false, type: 'attendance', text: '', userEmail: '', timestamp: Timestamp.now() as any },
-      { id: 'ach_feedback_20', title: 'Feedback Fanático', description: 'Registra 20 sensaciones post-entrenamiento', points: 75, progress: 0, total: 20, completed: false, type: 'feedback', text: '', userEmail: '', timestamp: Timestamp.now() as any }
-    ],
-    streaks: [
-        { type: 'training', current: 0, best: 0, lastUpdate: Timestamp.fromMillis(0) as any }
-    ],
-});
 
 const LoadingSpinner = () => (
     <div className="flex h-screen w-full items-center justify-center">
@@ -36,11 +17,18 @@ const LoadingSpinner = () => (
 );
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [user, setUser] = useState<(UserProfile & { id: string }) | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [pendingCompletionUser, setPendingCompletionUser] = useState<(UserProfile & { id: string }) | null>(null);
+  const { 
+    isLoggedIn, 
+    user, 
+    loading, 
+    pendingCompletionUser, 
+    handleLogin, 
+    completeRegistration, 
+    setPendingCompletionUser 
+  } = useAuth();
+  
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     async function testConnection() {
@@ -54,74 +42,17 @@ const App: React.FC = () => {
       }
     }
     testConnection();
+  }, []);
 
-    // Check session on load
-    const unsubscribe = subscribeToAuth(async (firebaseUser) => {
-      setLoading(true);
-      if (firebaseUser) {
-        const profile = await getUserProfile(firebaseUser.uid);
-        if (profile) {
-          if (!profile.registrationCompleted) {
-            setPendingCompletionUser(profile);
-            navigate('/');
-          } else {
-            setUser(profile);
-            setIsLoggedIn(true);
-            if(window.location.pathname === '/') {
-                navigate('/dashboard');
-            }
-          }
-        } else {
-          // Profile doesn't exist, create a basic one and ask to complete
-          const newUser: UserProfile & { id: string } = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            username: firebaseUser.email?.split('@')[0] || 'user',
-            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario',
-            isTrainer: firebaseUser.email === 'sergio.areman@gmail.com',
-            createdAt: Timestamp.now() as any,
-            gamification: createDefaultGamificationProfile(firebaseUser.uid),
-            registrationCompleted: false,
-          };
-          await createUserProfile(firebaseUser.uid, newUser);
-          setPendingCompletionUser(newUser);
-          navigate('/');
-        }
-      } else {
-        setUser(null);
-        setIsLoggedIn(false);
+  useEffect(() => {
+    if (!loading) {
+      if (pendingCompletionUser && location.pathname !== '/') {
+        navigate('/');
+      } else if (isLoggedIn && location.pathname === '/') {
+        navigate('/dashboard');
       }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
-  
-  const handleLogin = async () => {
-    try {
-        await signIn();
-    } catch (error) {
-        console.error("Error al iniciar sesión", error);
     }
-  };
-
-  const completeRegistration = async (userToComplete: UserProfile & { id: string }, additionalData: { displayName: string; birthDate: string; plan: string }) => {
-      const updatedData: Partial<UserProfile> = {
-        displayName: additionalData.displayName,
-        birthDate: additionalData.birthDate,
-        plan: additionalData.plan || "starter",
-        registrationCompleted: true,
-      };
-      
-      await updateUserProfile(userToComplete.id, updatedData);
-      
-      const updatedUser = { ...userToComplete, ...updatedData };
-      setUser(updatedUser as any);
-      setIsLoggedIn(true);
-      setPendingCompletionUser(null);
-      alert(`¡Bienvenido a TommyBox, ${additionalData.displayName}! 🎉`);
-      navigate('/dashboard');
-  };
+  }, [loading, isLoggedIn, pendingCompletionUser, navigate, location.pathname]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -147,8 +78,8 @@ const App: React.FC = () => {
         <Route
             path="/dashboard/*"
             element={
-                <ProtectedRoute user={user}>
-                    <DashboardLayout user={user} />
+                <ProtectedRoute user={user as any}>
+                    <DashboardLayout user={user as any} />
                 </ProtectedRoute>
             }
         />

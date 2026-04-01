@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { Users, Calendar, LogOut, ChevronDown, Info } from 'lucide-react';
+import { Users, Calendar, LogOut, ChevronDown, Info, MessageCircle } from 'lucide-react';
 import AgendaSection from './AgendaSection';
+import CommunitySection from './CommunitySection';
 import ClientProfileView from './ClientProfileView';
+import { getPlanName } from '../../utils/plans';
 
 import { useModal } from "../../contexts/ModalContext";
 
 const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
   const { showAlert, showConfirm } = useModal();
-  const [currentTab, setCurrentTab] = useState<'clients' | 'agenda'>('clients');
+  const [currentTab, setCurrentTab] = useState<'clients' | 'agenda' | 'community'>('clients');
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -58,6 +60,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
   const tabs = [
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
+    { id: 'community', label: 'Comunidad', icon: MessageCircle },
   ];
 
   return (
@@ -99,6 +102,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in">
         {currentTab === 'agenda' && <AgendaSection user={user} />}
+        {currentTab === 'community' && <CommunitySection user={user} />}
 
         {currentTab === 'clients' && (
             <div className="space-y-8">
@@ -119,7 +123,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
                               <p className="text-xs text-gray-500 truncate">{client.email}</p>
                             </div>
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold whitespace-nowrap hidden sm:block">
-                              {client.plan || 'Sin plan'}
+                              {client.plan ? getPlanName(client.plan) : 'Sin plan'}
                             </span>
                             <div className="flex gap-2">
                               <button onClick={() => setSelectedClient(client)}

@@ -1,6 +1,7 @@
 import HomeView from "./HomeView";
 import React, { useState, useContext, useEffect } from 'react';
-import { ShieldCheck, Mail, Lock } from 'lucide-react';
+import { useModal } from "../../contexts/ModalContext";
+import { ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
 import { View, UserProfile } from '../../types';
 import { signInWithEmail, signUpWithEmail } from '../../lib/auth';
 
@@ -44,6 +45,7 @@ const ONBOARDING_PLANS = [
 ];
 
 const RegistrationModal: React.FC<RegistrationModalProps> = ({ userToComplete, onClose, onComplete }) => {
+  const { showAlert } = useModal();
   const [userData, setUserData] = useState({ displayName: '', birthDate: '' });
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedPlan, setSelectedPlan] = useState<string>('plan_2');
@@ -146,7 +148,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ userToComplete, o
   );
 };
 
-import { useModal } from "../../contexts/ModalContext";
+
 
 const LoginView: React.FC<LoginViewProps> = ({
  setCurrentView, isLoggedIn, handleLogin, completeRegistration, pendingCompletionUser, setPendingCompletionUser }) => {
@@ -175,6 +177,12 @@ const LoginView: React.FC<LoginViewProps> = ({
 
   return (
     <>
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-[100] animate-fade-in">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+          <p className="text-white font-bold text-lg tracking-wide">Validando credenciales...</p>
+        </div>
+      )}
       <HomeView
         setCurrentView={setCurrentView}
         handleLogin={handleLogin}

@@ -5,13 +5,14 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { storage, auth } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, Timestamp, orderBy, getDocs } from 'firebase/firestore';
-import { ChevronLeft, Download, Upload, Activity, FileText } from 'lucide-react';
+import { ChevronLeft, Download, Upload, Activity, FileText, PieChart } from 'lucide-react';
+import ClientStatsView from './ClientStatsView';
 
 import { useModal } from "../../contexts/ModalContext";
 
 const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void }) => {
   const { showAlert, showConfirm } = useModal();
-  const [activeTab, setActiveTab] = useState<'Rendimiento' | 'Observaciones'>('Rendimiento');
+  const [activeTab, setActiveTab] = useState<'Rendimiento' | 'Observaciones' | 'Gráficas'>('Rendimiento');
   const [metrics, setMetrics] = useState<any[]>([]);
   const [observations, setObservations] = useState<any[]>([]);
 
@@ -23,15 +24,15 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
   const [metricDate, setMetricDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0] || !user?.id) return;
+    if (!e.target.files || !e.target.files[0] || !client?.id) return;
     const file = e.target.files[0];
 
     try {
       if (!storage) throw new Error("Storage not initialized");
-      const storageRef = ref(storage, `profilePhotos/${user.id}`);
+      const storageRef = ref(storage, `profilePhotos/${client.id}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, 'users', user.id), { photoUrl: url });
+      await updateDoc(doc(db, 'users', client.id), { photoUrl: url });
       showAlert('¡Éxito!', 'Foto de perfil actualizada', 'success');
     } catch (error) {
       console.error(error);
@@ -41,8 +42,8 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
 
   const handlePasswordReset = async () => {
     try {
-      if (!auth || !user?.email) return;
-      await sendPasswordResetEmail(auth, user.email, {
+      if (!auth || !client?.email) return;
+      await sendPasswordResetEmail(auth, client.email, {
         url: window.location.origin + '/reset-password'
       });
       showAlert('¡Correo enviado!', 'Revisa tu bandeja de entrada para restablecer tu contraseña.', 'success');
@@ -193,6 +194,14 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                     >
                         <FileText size={18} /><span>Observaciones</span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab('Gráficas')}
+                        className={`flex items-center gap-2 py-3 px-5 font-bold text-sm rounded-t-xl transition-colors ${
+                            activeTab === 'Gráficas' ? 'bg-gray-50 text-blue-600 border-t-4 border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                        <PieChart size={18} /><span>Gráficas</span>
+                    </button>
                 </div>
             </div>
         </header>
@@ -286,6 +295,12 @@ const ClientProfileView = ({ client, onBack }: { client: any, onBack: () => void
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'Gráficas' && (
+                <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100">
+                    <ClientStatsView user={client} onUserUpdate={()=>{}} isTrainerView={true} />
                 </div>
             )}
 

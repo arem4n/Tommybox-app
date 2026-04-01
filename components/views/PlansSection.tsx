@@ -105,7 +105,7 @@ const PlansSection = ({ user }: { user: any }) => {
           <p className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl text-gray-500">Transforma tu vida con nuestros programas de entrenamiento personalizado.</p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8 items-center">
+      <div className="grid lg:grid-cols-3 gap-8 lg:gap-16 items-center">
         {plansToRender.map(plan => {
           const isCurrent = currentPlan === plan.id;
           const isFeatured = plan.featured;

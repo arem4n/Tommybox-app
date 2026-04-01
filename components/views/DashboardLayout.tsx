@@ -1,13 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 const AgendaSection = lazy(() => import('./AgendaSection'));
 const CommunitySection = lazy(() => import('./CommunitySection'));
 const PlansSection = lazy(() => import('./PlansSection'));
 import ClientStatsView from './ClientStatsView';
 const TrainerDashboard = lazy(() => import('./TrainerDashboard'));
-import { Calendar, Users, Star, User, LogOut, Trophy } from 'lucide-react';
+import { Calendar, Users, Star, User, LogOut, Trophy, Loader2 } from 'lucide-react';
 const GamificationView = lazy(() => import('./GamificationView'));
 import { signOut } from '../../lib/auth';
+
+const LoadingSpinner = () => (
+    <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+    </div>
+);
 
 interface DashboardLayoutProps {
   user: any;

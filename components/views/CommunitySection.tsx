@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Camera, Video, Smile } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Camera, Video, Smile, X } from 'lucide-react';
 
 import { useModal } from "../../contexts/ModalContext";
 
@@ -10,6 +10,8 @@ const CommunitySection = ({ user }: { user: any }) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [toast, setToast] = useState<string | null>(null);
+  const [activeCommentPost, setActiveCommentPost] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -34,12 +36,52 @@ const CommunitySection = ({ user }: { user: any }) => {
         displayName: user.displayName || 'Anónimo',
         content: newPostContent,
         likes: [],
+        comments: [],
         createdAt: serverTimestamp()
       });
       setNewPostContent('');
     } catch (error) {
       console.error("Error adding post: ", error);
     }
+  };
+
+  const handleLike = async (postId: string, currentLikes: string[]) => {
+    if (!user?.id) return;
+    const postRef = doc(db, 'community', postId);
+    if (currentLikes.includes(user.id)) {
+      await updateDoc(postRef, { likes: arrayRemove(user.id) });
+    } else {
+      await updateDoc(postRef, { likes: arrayUnion(user.id) });
+    }
+  };
+
+  const handleDelete = async (postId: string) => {
+    showConfirm('¿Eliminar publicación?', 'Esta acción no se puede deshacer.', async () => {
+      await deleteDoc(doc(db, 'community', postId));
+    });
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string, currentComments: any[]) => {
+      showConfirm('¿Eliminar comentario?', 'Se borrará permanentemente.', async () => {
+          const updatedComments = currentComments.filter(c => c.id !== commentId);
+          await updateDoc(doc(db, 'community', postId), { comments: updatedComments });
+      });
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!commentText.trim() || !user?.id) return;
+    const postRef = doc(db, 'community', postId);
+    const newComment = {
+      id: Date.now().toString(),
+      authorId: user.id,
+      displayName: user.displayName || 'Anónimo',
+      text: commentText.trim(),
+      createdAt: Date.now()
+    };
+    try {
+      await updateDoc(postRef, { comments: arrayUnion(newComment) });
+      setCommentText('');
+    } catch(e) { console.error('Error adding comment', e); }
   };
 
 
@@ -77,17 +119,7 @@ const CommunitySection = ({ user }: { user: any }) => {
           </div>
 
           <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-            <div className="flex gap-2">
-              <button type="button" disabled title="Próximamente" className="p-2 text-gray-400 hover:bg-gray-50 rounded-full transition-colors cursor-not-allowed">
-                <Camera size={20} />
-              </button>
-              <button type="button" disabled title="Próximamente" className="p-2 text-gray-400 hover:bg-gray-50 rounded-full transition-colors cursor-not-allowed">
-                <Video size={20} />
-              </button>
-              <button type="button" disabled title="Próximamente" className="p-2 text-gray-400 hover:bg-gray-50 rounded-full transition-colors cursor-not-allowed">
-                <Smile size={20} />
-              </button>
-            </div>
+            <div></div>
             <button
               type="submit"
               disabled={!newPostContent.trim()}
@@ -103,7 +135,9 @@ const CommunitySection = ({ user }: { user: any }) => {
       <div className="space-y-6">
         {posts.map(post => {
           const likes = post.likes || [];
+          const comments = post.comments || [];
           const hasLiked = user?.id ? likes.includes(user.id) : false;
+          const showComments = activeCommentPost === post.id;
 
           return (
             <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -120,7 +154,7 @@ const CommunitySection = ({ user }: { user: any }) => {
                     </p>
                   </div>
                 </div>
-                {user?.id === post.authorId && (
+                {(user?.id === post.authorId || user?.isTrainer) && (
                   <div className="relative group">
                     <button className="p-2 text-gray-400 hover:bg-gray-50 rounded-full transition-colors">
                       <MoreHorizontal size={20} />
@@ -143,11 +177,14 @@ const CommunitySection = ({ user }: { user: any }) => {
               </div>
 
               {/* Stats */}
-              {likes.length > 0 && (
-                <div className="px-5 pb-3">
-                  <p className="text-sm text-gray-500 font-medium flex items-center gap-1.5">
-                    <Heart size={14} className="fill-red-500 text-red-500" /> {likes.length} me gusta
-                  </p>
+              {(likes.length > 0 || comments.length > 0) && (
+                <div className="px-5 pb-3 flex gap-4 text-sm font-medium text-gray-500">
+                  {likes.length > 0 && (
+                     <span className="flex items-center gap-1.5"><Heart size={14} className="fill-red-500 text-red-500" /> {likes.length} me gusta</span>
+                  )}
+                  {comments.length > 0 && (
+                     <span className="flex items-center gap-1.5"><MessageCircle size={14} /> {comments.length} comentarios</span>
+                  )}
                 </div>
               )}
 
@@ -163,9 +200,10 @@ const CommunitySection = ({ user }: { user: any }) => {
                   <span>Me gusta</span>
                 </button>
                 <button
-                  disabled
-                  title="Próximamente"
-                  className="flex items-center justify-center gap-2 py-3 rounded-xl transition-colors text-sm font-bold text-gray-400 cursor-not-allowed"
+                  onClick={() => setActiveCommentPost(showComments ? null : post.id)}
+                  className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-colors text-sm font-bold ${
+                    showComments ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
                 >
                   <MessageCircle size={20} />
                   <span>Comentar</span>
@@ -178,6 +216,55 @@ const CommunitySection = ({ user }: { user: any }) => {
                   <span>Compartir</span>
                 </button>
               </div>
+
+              {/* Comments Section */}
+              {showComments && (
+                <div className="bg-gray-50 p-4 border-t border-gray-100">
+                  <div className="space-y-3 mb-4 max-h-48 overflow-y-auto">
+                    {comments.map((comment: any) => (
+                       <div key={comment.id} className="flex gap-2">
+                           <div className="w-8 h-8 rounded-full bg-blue-200 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                               {comment.displayName?.[0]?.toUpperCase()}
+                           </div>
+                           <div className="bg-white p-3 rounded-xl shadow-sm w-full border border-gray-100 relative group">
+                               <p className="font-bold text-xs text-gray-900">{comment.displayName}</p>
+                               <p className="text-sm text-gray-700 pr-6">{comment.text}</p>
+                               
+                               {(user?.id === comment.authorId || user?.isTrainer) && (
+                                   <button 
+                                      onClick={() => handleDeleteComment(post.id, comment.id, comments)}
+                                      className="absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Eliminar comentario"
+                                   >
+                                      <X size={14} />
+                                   </button>
+                               )}
+                           </div>
+                       </div>
+                    ))}
+                    {comments.length === 0 && (
+                        <p className="text-center text-sm text-gray-400">Sé el primero en comentar.</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 relative">
+                     <input 
+                       type="text" 
+                       value={commentText}
+                       onChange={(e) => setCommentText(e.target.value)}
+                       onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post.id) }}
+                       placeholder="Escribe un comentario..." 
+                       className="w-full bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-blue-500 pr-12"
+                     />
+                     <button 
+                       onClick={() => handleAddComment(post.id)}
+                       disabled={!commentText.trim()}
+                       className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm px-2 disabled:opacity-50"
+                     >
+                       Enviar
+                     </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
