@@ -33,7 +33,8 @@ const AgendaSection = ({ user }: { user: any }) => {
       sessionToReplace?: Session,
       clientName?: string,
       isRecurring?: boolean,
-      existingSessionId?: string
+      existingSessionId?: string,
+      userId?: string
   }>({ type: 'none', sessionTime: '', sessionDay: null });
 
   const [bookedSessions, setBookedSessions] = useState<(Session & { clientName?: string })[]>([]);
@@ -79,7 +80,7 @@ const AgendaSection = ({ user }: { user: any }) => {
                    } catch(e) {}
                 }
 
-                allSessions.push({ id: docSnap.id, clientName, ...data });
+                allSessions.push({ id: docSnap.id, clientName, userId: uid, ...data });
             }
             setBookedSessions(allSessions);
         });
@@ -145,6 +146,16 @@ const AgendaSection = ({ user }: { user: any }) => {
   const currentActualStartOfWeek = getStartOfWeek(new Date());
   const canGoBack = startOfWeek > currentActualStartOfWeek;
 
+  const getSessionsInWeek = (weekStart: Date) => {
+      if (isTrainer) return 0;
+      const startStr = weekStart.toISOString().split('T')[0];
+      const endOfWeek = new Date(weekStart);
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      const endStr = endOfWeek.toISOString().split('T')[0];
+
+      return bookedSessions.filter(s => s.date >= startStr && s.date <= endStr).length;
+  };
+
   const handleSlotClick = (dayIndex: number, time: string) => {
       const slotDate = new Date(startOfWeek);
       slotDate.setDate(slotDate.getDate() + dayIndex);
@@ -156,7 +167,14 @@ const AgendaSection = ({ user }: { user: any }) => {
 
       if (isTrainer) {
            if (existingSession) {
-               showAlert(`Sesión agendada con: ${existingSession.clientName}`);
+               setModal({
+                   type: 'cancel',
+                   sessionTime: time,
+                   sessionDay: dayIndex,
+                   existingSessionId: existingSession.id,
+                   clientName: existingSession.clientName,
+                   userId: existingSession.userId
+               });
            }
            return;
       }
@@ -176,9 +194,23 @@ const AgendaSection = ({ user }: { user: any }) => {
                type: 'no-plan',
                sessionTime: time,
                sessionDay: dayIndex,
-               message: "Necesitas un plan activo para agendar sesiones."
+               message: "Necesitas un plan activo o una evaluación disponible para agendar."
            });
            return;
+      }
+
+      if (!isTrainer && hasPlan) {
+           const weeklyLimit = getPlanLimit(userPlan);
+           const sessionsThisWeek = getSessionsInWeek(startOfWeek);
+           if (sessionsThisWeek >= weeklyLimit) {
+               setModal({
+                   type: 'no-plan',
+                   sessionTime: time,
+                   sessionDay: dayIndex,
+                   message: `Límite alcanzado. Tu plan (${getPlanLimit(userPlan)}x) no permite más sesiones en esta semana. Si deseas este horario, cancela otra sesión agendada para liberar un cupo.`
+               });
+               return;
+           }
       }
 
       setModal({
@@ -191,27 +223,46 @@ const AgendaSection = ({ user }: { user: any }) => {
 
   const confirmBooking = async () => {
     if (user?.id && modal.sessionDay !== null) {
-      const slotDate = new Date(startOfWeek);
-      slotDate.setDate(slotDate.getDate() + modal.sessionDay);
-      const dateStr = slotDate.toISOString().split('T')[0];
-      const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
-
       try {
-        await addDoc(collection(db, `agenda/${user.id}/events`), {
-          date: dateStr,
-          time: modal.sessionTime,
-          createdAt: Timestamp.now()
-        });
+        const weeksToBook = modal.isRecurring ? 4 : 1;
+        let successfulBookings = 0;
 
-        await setDoc(doc(db, 'bookedSlots', slotId), {
-          date: dateStr,
-          time: modal.sessionTime,
-          bookedBy: user.id,
-          createdAt: Timestamp.now()
-        });
+        for (let i = 0; i < weeksToBook; i++) {
+            const slotDate = new Date(startOfWeek);
+            slotDate.setDate(slotDate.getDate() + modal.sessionDay + (i * 7));
+            const dateStr = slotDate.toISOString().split('T')[0];
+            const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
+
+            if (i > 0 && takenSlots[slotId]) continue; // Skip future weeks if already taken by someone else
+
+            await addDoc(collection(db, `agenda/${user.id}/events`), {
+              date: dateStr,
+              time: modal.sessionTime,
+              createdAt: Timestamp.now(),
+              isRecurring: modal.isRecurring || false
+            });
+
+            await setDoc(doc(db, 'bookedSlots', slotId), {
+              date: dateStr,
+              time: modal.sessionTime,
+              bookedBy: user.id,
+              createdAt: Timestamp.now()
+            });
+
+            successfulBookings++;
+        }
 
         recalculateGamification(user.id).catch(console.error);
-        setModal({ ...modal, type: 'success' });
+        
+        let successMsg = modal.isRecurring 
+            ? `Se han agendado ${successfulBookings} sesiones exitosamente del mes.` 
+            : 'Tu sesión ha sido agendada correctamente.';
+
+        if (modal.isRecurring && successfulBookings < weeksToBook) {
+             successMsg += ` (Hubo ${weeksToBook - successfulBookings} semanas que ya estaban ocupadas por otro atleta).`;
+        }
+
+        setModal({ ...modal, type: 'success', message: successMsg });
       } catch(e) {
         console.error(e);
       }
@@ -219,14 +270,15 @@ const AgendaSection = ({ user }: { user: any }) => {
   };
 
   const cancelBooking = async () => {
-    if (user?.id && modal.existingSessionId && modal.sessionDay !== null) {
+    const targetUserId = isTrainer ? modal.userId : user?.id;
+    if (targetUserId && modal.existingSessionId && modal.sessionDay !== null) {
       const slotDate = new Date(startOfWeek);
       slotDate.setDate(slotDate.getDate() + modal.sessionDay);
       const dateStr = slotDate.toISOString().split('T')[0];
       const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
 
       try {
-        await deleteDoc(doc(db, `agenda/${user.id}/events`, modal.existingSessionId));
+        await deleteDoc(doc(db, `agenda/${targetUserId}/events`, modal.existingSessionId));
         await deleteDoc(doc(db, 'bookedSlots', slotId));
         setModal({ ...modal, type: 'none' });
       } catch(e) {
@@ -401,7 +453,7 @@ const AgendaSection = ({ user }: { user: any }) => {
                            </div>
                            <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Cancelar Reserva</h3>
                            <p className="text-gray-500 mb-6 lg:mb-8">
-                               ¿Estás seguro de cancelar tu sesión para el <br/>
+                               ¿Estás seguro de cancelar la sesión de {modal.clientName || 'entrenamiento'} para el <br/>
                                <span className="font-bold text-gray-900">
                                    {days[modal.sessionDay!]} a las {modal.sessionTime}
                                </span>?
@@ -429,15 +481,27 @@ const AgendaSection = ({ user }: { user: any }) => {
                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-blue-600">
                                <Calendar size={32} />
                            </div>
-                           <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Confirmar Reserva</h3>
-                           <p className="text-gray-500 mb-6 lg:mb-8">
-                               ¿Agendar sesión para el <br/>
-                               <span className="font-bold text-gray-900">
-                                   {days[modal.sessionDay!]} a las {modal.sessionTime}
-                               </span>?
-                           </p>
+                            <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Confirmar Reserva</h3>
+                            <p className="text-gray-500 mb-4 lg:mb-6">
+                                ¿Agendar sesión para el <br/>
+                                <span className="font-bold text-gray-900">
+                                    {days[modal.sessionDay!]} a las {modal.sessionTime}
+                                </span>?
+                            </p>
 
-                           <div className="flex gap-3">
+                            <div className="text-left mb-6">
+                                <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={modal.isRecurring || false} 
+                                        onChange={(e) => setModal({...modal, isRecurring: e.target.checked})}
+                                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Repetir este horario por el resto del mes (4 semanas)</span>
+                                </label>
+                            </div>
+
+                            <div className="flex gap-3">
                                <button
                                    onClick={() => setModal({ ...modal, type: 'none' })}
                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
@@ -456,13 +520,13 @@ const AgendaSection = ({ user }: { user: any }) => {
 
                    {modal.type === 'success' && (
                        <div className="text-center">
-                           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-green-600 animate-scale-up">
-                               <Check size={32} strokeWidth={4} />
-                           </div>
-                           <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">¡Reserva Exitosa!</h3>
-                           <p className="text-gray-500 mb-6 lg:mb-8">Tu sesión ha sido agendada correctamente.</p>
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6 lg:mb-8 text-green-600 animate-scale-up">
+                                <Check size={32} strokeWidth={4} />
+                            </div>
+                            <h3 className="text-xl lg:text-2xl lg:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">¡Reserva Exitosa!</h3>
+                            <p className="text-gray-500 mb-6 lg:mb-8">{modal.message || 'Tu sesión ha sido agendada correctamente.'}</p>
 
-                           <div className="space-y-3">
+                            <div className="space-y-3">
                                <a
                                    href={getGoogleCalendarUrl(
                                        (() => {
@@ -492,7 +556,7 @@ const AgendaSection = ({ user }: { user: any }) => {
                                     download="entrenamiento_tommybox.ics"
                                     className="block w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-colors flex items-center justify-center gap-2"
                                >
-                                    <Calendar size={18} /> Descargar .ICS
+                                    <Calendar size={18} /> Agregar a Apple Calendar (iOS)
                                </a>
                                <button
                                    onClick={() => setModal({ ...modal, type: 'none' })}

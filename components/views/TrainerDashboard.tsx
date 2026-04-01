@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { Users, Calendar, LogOut, ChevronDown, Info, MessageCircle } from 'lucide-react';
+import { Users, Calendar, LogOut, ChevronDown, Info, MessageCircle, CreditCard, CheckCircle, BookOpen } from 'lucide-react';
 import AgendaSection from './AgendaSection';
 import CommunitySection from './CommunitySection';
 import ClientProfileView from './ClientProfileView';
+import TrainerLibraryManager from './TrainerLibraryManager';
 import { getPlanName } from '../../utils/plans';
-
 import { useModal } from "../../contexts/ModalContext";
 
 const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
   const { showAlert, showConfirm } = useModal();
-  const [currentTab, setCurrentTab] = useState<'clients' | 'agenda' | 'community'>('clients');
+  const [currentTab, setCurrentTab] = useState<'clients' | 'agenda' | 'community' | 'payments' | 'biblioteca'>('clients');
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -27,6 +27,16 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
 
   const activeClients = clients.filter(c => c.status !== 'archived');
   const archivedClients = clients.filter(c => c.status === 'archived');
+  const pendingPayments = clients.filter(c => c.paymentStatus === 'pending_verification');
+
+  const approvePayment = async (clientId: string) => {
+    try {
+        await updateDoc(doc(db, 'users', clientId), {
+            paymentStatus: null
+        });
+        showAlert('Pago verificado. El plan del atleta ha sido activado definitivamente.');
+    } catch(e) { console.error(e); }
+  };
 
   const archiveClient = async (clientId: string) => {
     try {
@@ -47,10 +57,11 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
   };
 
   const deleteClient = async (clientId: string) => {
-    if (!showConfirm('¿Eliminar cliente permanentemente? Esta acción no se puede deshacer.')) return;
-    try {
-      await deleteDoc(doc(db, 'users', clientId));
-    } catch(e) { console.error(e); }
+    showConfirm('¿Eliminar cliente permanentemente?', 'Esta acción no se puede deshacer.', async () => {
+      try {
+        await deleteDoc(doc(db, 'users', clientId));
+      } catch(e) { console.error(e); }
+    });
   };
 
   if (selectedClient) {
@@ -61,6 +72,8 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'agenda', label: 'Agenda', icon: Calendar },
     { id: 'community', label: 'Comunidad', icon: MessageCircle },
+    { id: 'payments', label: 'Pagos', icon: CreditCard },
+    { id: 'biblioteca', label: 'Biblioteca', icon: BookOpen },
   ];
 
   return (
@@ -69,15 +82,14 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
         {/* Row 1 */}
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="https://i.postimg.cc/rpM8kSt5/20251103_141407_0000.png" alt="TommyBox" className="h-8 object-contain" />
-            <span className="font-black text-xl lg:text-2xl lg:text-3xl lg:text-4xl tracking-tight hidden sm:block">TOMMYBOX TRAINER</span>
+            <img src="/logo-header.png" alt="TommyBox" className="h-9 object-contain" />
           </div>
 
           <div className="flex items-center gap-4 lg:gap-6 lg:p-6 lg:p-8">
             <span className="text-sm font-medium text-gray-600 hidden sm:block">{user?.displayName}</span>
-            <button onClick={onLogout} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2">
-              <LogOut size={20} />
-              <span className="text-sm font-medium hidden md:block">Salir</span>
+            <button onClick={onLogout} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Cerrar sesión</span>
             </button>
           </div>
         </div>
@@ -103,6 +115,46 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in">
         {currentTab === 'agenda' && <AgendaSection user={user} />}
         {currentTab === 'community' && <CommunitySection user={user} />}
+        {currentTab === 'biblioteca' && <TrainerLibraryManager user={user} />}
+
+        {currentTab === 'payments' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                    <h2 className="text-xl font-bold text-gray-900">Verificar Transferencias ({pendingPayments.length})</h2>
+                    <p className="text-sm text-gray-500">Confirma manualmente las transferencias de tus atletas para dejar sus planes listos.</p>
+                </div>
+                {pendingPayments.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 font-medium">No tienes transferencias pendientes por verificar.</div>
+                ) : (
+                    <div className="divide-y divide-gray-100">
+                        {pendingPayments.map(client => (
+                            <div key={client.id} className="p-6 hover:bg-gray-50 flex items-center justify-between gap-4 flex-wrap">
+                                <div className="flex items-center gap-4">
+                                     <div className="w-12 h-12 bg-green-100 text-green-700 rounded-full flex items-center justify-center">
+                                         <CreditCard size={24} />
+                                     </div>
+                                     <div>
+                                         <p className="font-bold text-gray-900">{client.displayName}</p>
+                                         <p className="text-sm text-gray-500">{client.email}</p>
+                                     </div>
+                                </div>
+                                <div className="flex items-center gap-4 w-full sm:w-auto mt-2 sm:mt-0 justify-between">
+                                     <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold">
+                                         Plan: {getPlanName(client.plan)}
+                                     </span>
+                                     <button 
+                                         onClick={() => approvePayment(client.id)}
+                                         className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors"
+                                     >
+                                         <CheckCircle size={18} /> Aprobar
+                                     </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
 
         {currentTab === 'clients' && (
             <div className="space-y-8">
@@ -121,6 +173,11 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-gray-900 truncate">{client.displayName}</p>
                               <p className="text-xs text-gray-500 truncate">{client.email}</p>
+                              {client.createdAt?.toDate && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  Miembro desde {client.createdAt.toDate().toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })}
+                                </p>
+                              )}
                             </div>
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold whitespace-nowrap hidden sm:block">
                               {client.plan ? getPlanName(client.plan) : 'Sin plan'}

@@ -99,17 +99,19 @@ export interface GamificationProfile {
 
 export interface UserProfile {
     email: string;
-    username: string; // Used for login
-    displayName?: string; // New: For display
-    birthDate?: string; // New: "YYYY-MM-DD"
-    registrationCompleted?: boolean; // New
-    password?: string;
+    username: string;
+    displayName?: string;
+    birthDate?: string;
+    registrationCompleted?: boolean;
     plan?: string;
     isTrainer: boolean;
     createdAt: Timestamp;
     gamification: GamificationProfile;
-    photoURL?: string; // New: For profile picture (Base64)
-    lastBirthdayBonusYear?: number; // For birthday bonus tracking
+    photoURL?: string;
+    lastBirthdayBonusYear?: number;
+    paymentStatus?: string;
+    status?: string;
+    archivedAt?: Timestamp;
 }
 
 export interface DailyActionTracker {

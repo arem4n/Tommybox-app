@@ -72,7 +72,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <img
-            src="https://i.postimg.cc/rpM8kSt5/20251103_141407_0000.png"
+            src="/logo-header.png"
             alt="TommyBox"
             className="h-10 object-contain"
           />
@@ -91,9 +91,9 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
           {/* HERO SECTION */}
           <div className="max-w-4xl mx-auto text-center">
             <img
-              src="https://i.postimg.cc/rpM8kSt5/20251103_141407_0000.png"
+              src="/logo-hero.png"
               alt="TommyBox Logo"
-              className="h-24 md:h-32 mx-auto mb-8 animate-fade-in"
+              className="h-40 md:h-56 mx-auto mb-8 animate-fade-in"
             />
             <h1 className="text-4xl font-extrabold text-blue-900 md:text-6xl leading-tight">
               Entrena con un programa funcional, personalizado y respaldado por ciencia para mejorar tu salud, fuerza y movilidad.

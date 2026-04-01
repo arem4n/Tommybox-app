@@ -32,14 +32,32 @@ const RARITY_COLORS: Record<string, string> = {
     legendary: 'text-yellow-500 border-yellow-300 bg-yellow-50',
 };
 
+const RARITY_LABEL: Record<string, string> = {
+    common: 'Común',
+    rare: 'Raro',
+    epic: 'Épico',
+    legendary: 'Legendario',
+};
+
+const MONTHLY_CHALLENGE = {
+    id: 'monthly_5_sessions',
+    label: '🏆 Desafío del Mes',
+    description: '5 sesiones este mes',
+    target: 5,
+    reward: 'Badge exclusivo + 50 XP',
+};
+
 const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
     const [gamification, setGamification] = useState<GamificationProfile | null>(user?.gamification || null);
     const { showAchievement } = useModal();
-  const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
+    const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
     const [canRegisterFeeling, setCanRegisterFeeling] = useState<boolean>(false);
     const [selectedFeeling, setSelectedFeeling] = useState<string>('');
     const [comment, setComment] = useState<string>('');
+    const [recoveryNotes, setRecoveryNotes] = useState<string>('');
     const [successMessage, setSuccessMessage] = useState<string>('');
+    const [newBadge, setNewBadge] = useState<{ icon: string; name: string; rarity: string } | null>(null);
+    const [prevBadgeIds, setPrevBadgeIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!user?.id) return;
@@ -47,7 +65,20 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 if (data.gamification) {
-                    setGamification(data.gamification);
+                    const newGam: GamificationProfile = data.gamification;
+                    // Detect newly unlocked badges
+                    const newBadgeIds = new Set((newGam.badges || []).map((b: any) => b.id));
+                    if (prevBadgeIds.size > 0) {
+                        for (const badge of (newGam.badges || [])) {
+                            if (!prevBadgeIds.has(badge.id)) {
+                                setNewBadge({ icon: badge.icon, name: badge.name, rarity: badge.rarity });
+                                setTimeout(() => setNewBadge(null), 5000);
+                                break;
+                            }
+                        }
+                    }
+                    setPrevBadgeIds(newBadgeIds);
+                    setGamification(newGam);
                 }
             }
         });
@@ -66,6 +97,7 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
             await addDoc(collection(db, 'users', user.id, 'feelings'), {
                 feeling: selectedFeeling,
                 comment,
+                recoveryNotes,
                 date: todayStr,
                 timestamp: Timestamp.now()
             });
@@ -76,6 +108,7 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
             setTimeout(() => setSuccessMessage(''), 3000);
             setSelectedFeeling('');
             setComment('');
+            setRecoveryNotes('');
         } catch (error) {
             console.error("Error registering feeling", error);
         }
@@ -85,9 +118,29 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
     const { level, progress, currentXpInLevel, xpForNextLevel } = calculateLevelInfo(totalPoints);
     const currentStreak = gamification?.streaks?.[0]?.current || 0;
     const bestStreak = gamification?.streaks?.[0]?.best || 0;
+    const totalSessions = gamification?.achievements?.find(a => a.id === 'ach_asistencia_25')?.progress ||
+        gamification?.achievements?.find(a => a.id === 'ach_asistencia_10')?.progress || 0;
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
 
     return (
         <div className="space-y-6">
+          {/* Badge Unlock Celebration Modal */}
+          {newBadge && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div className="bg-slate-900 border border-yellow-400/30 shadow-2xl shadow-yellow-400/20 rounded-3xl p-8 text-center max-w-xs w-full mx-4 animate-bounce pointer-events-auto">
+                <div className="text-7xl mb-4">{newBadge.icon}</div>
+                <div className={`text-xs font-black uppercase tracking-widest mb-2 ${
+                  newBadge.rarity === 'legendary' ? 'text-yellow-400' :
+                  newBadge.rarity === 'epic' ? 'text-purple-400' :
+                  newBadge.rarity === 'rare' ? 'text-blue-400' : 'text-gray-400'
+                }`}>{RARITY_LABEL[newBadge.rarity]} desbloqueado</div>
+                <h3 className="text-2xl font-black text-white">{newBadge.name}</h3>
+                <p className="text-slate-400 text-sm mt-2">¡Felicitaciones! Conseguiste un nuevo badge 🎉</p>
+                <button onClick={() => setNewBadge(null)} className="mt-4 px-6 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm">¡Genial!</button>
+              </div>
+            </div>
+          )}
             {/* Top Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Level Card */}
@@ -129,9 +182,10 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
                 </div>
             </div>
 
-            {/* Daily Check-in */}
+                {/* Daily Check-in */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Check-in de sensación post-entreno</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Check-in post-entreno</h3>
+                <p className="text-xs text-gray-400 mb-4">¿Cómo te sentiste hoy? +5 XP por registrar</p>
                 {!canRegisterFeeling ? (
                     <div className="flex items-center justify-center gap-2 p-6 bg-gray-50 rounded-xl text-gray-500 font-medium">
                         <Lock size={20} />
@@ -158,8 +212,15 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             maxLength={200}
-                            placeholder="Nota opcional sobre tu entrenamiento (máx. 200 caracteres)..."
-                            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24 text-sm"
+                            placeholder="¿Cómo estuvo el entreno? (opcional)"
+                            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-20 text-sm"
+                        />
+                        <textarea
+                            value={recoveryNotes}
+                            onChange={(e) => setRecoveryNotes(e.target.value)}
+                            maxLength={150}
+                            placeholder="Notas de recuperación: sueño, dolores, energía... (opcional)"
+                            className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-16 text-sm"
                         />
                         <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-400">{comment.length}/200</span>
@@ -177,6 +238,33 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
                     </div>
                 )}
             </div>
+
+            {/* Monthly Challenge */}
+            {(() => {
+              const now = new Date();
+              const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+              const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+              const monthProgress = Math.min(gamification?.achievements?.find(a => a.id === 'ach_asistencia_10')?.progress || 0, MONTHLY_CHALLENGE.target);
+              const pct = Math.round((monthProgress / MONTHLY_CHALLENGE.target) * 100);
+              return (
+                <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <span className="text-xs font-black uppercase tracking-widest text-blue-200">{MONTHLY_CHALLENGE.label}</span>
+                      <h3 className="text-lg font-black">{MONTHLY_CHALLENGE.description}</h3>
+                    </div>
+                    <span className="text-3xl">🎯</span>
+                  </div>
+                  <div className="w-full bg-blue-900/50 rounded-full h-3 mb-2">
+                    <div className="bg-white h-3 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="flex justify-between text-xs text-blue-200">
+                    <span>{monthProgress}/{MONTHLY_CHALLENGE.target} sesiones</span>
+                    <span>🏅 {MONTHLY_CHALLENGE.reward}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Tabs */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
