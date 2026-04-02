@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, addDoc, query, where, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, addDoc, query, where, getDocs, deleteDoc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { db } from './firebase';
 import { UserProfile, DailyActionTracker, Badge, Achievement, Streak } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
@@ -13,8 +13,8 @@ export const BADGE_CATALOG: Omit<Badge, 'unlockedAt'>[] = [
   { id: 'asistencia_10', name: 'Constante', description: 'Completa 10 sesiones de entrenamiento', icon: '⭐', rarity: 'rare', category: 'consistency' },
   { id: 'asistencia_25', name: 'Dedicado', description: 'Completa 25 sesiones de entrenamiento', icon: '🌟', rarity: 'epic', category: 'consistency' },
   { id: 'asistencia_50', name: 'Imparable', description: 'Completa 50 sesiones de entrenamiento', icon: '👑', rarity: 'legendary', category: 'consistency' },
-  { id: 'feedback_5', name: 'Atento', description: 'Registra tu sensación post-entreno 5 veces', icon: '📝', rarity: 'common', category: 'feedback' },
-  { id: 'feedback_20', name: 'Analítico', description: 'Registra tu sensación post-entreno 20 veces', icon: '📊', rarity: 'rare', category: 'feedback' },
+  { id: 'feedback_5', name: 'Atento', description: 'Registra tu sensación post-entreno 5 veces', icon: '📝', rarity: 'common', category: 'milestone' },
+  { id: 'feedback_20', name: 'Analítico', description: 'Registra tu sensación post-entreno 20 veces', icon: '📊', rarity: 'rare', category: 'milestone' },
   { id: 'racha_3', name: 'En Racha', description: 'Mantén una racha de 3 semanas', icon: '🔥', rarity: 'common', category: 'consistency' },
   { id: 'racha_8', name: 'Fuego Interno', description: 'Mantén una racha de 8 semanas', icon: '☄️', rarity: 'rare', category: 'consistency' },
   { id: 'racha_16', name: 'Volcán', description: 'Mantén una racha de 16 semanas', icon: '🌋', rarity: 'epic', category: 'consistency' },
@@ -313,13 +313,17 @@ export async function redeemReward(userId: string, reward: any, type: 'points' |
         userId, totalPoints: 0, level: 1, experience: 0, experienceToNextLevel: 100, badges: [], achievements: [], streaks: []
     };
 
-    if (type === 'points' && gamification.totalPoints < reward.pointsCost) {
-      return { success: false, message: 'Puntos insuficientes' };
-    }
-
+    // Atomic point deduction — prevents race condition / double-spend
     if (type === 'points') {
-      gamification.totalPoints -= reward.pointsCost;
-      await updateDoc(userRef, { gamification });
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(userRef);
+        if (!snap.exists()) throw new Error('User not found');
+        const current = snap.data().gamification?.totalPoints ?? 0;
+        if (current < reward.pointsCost) throw new Error('Puntos insuficientes');
+        transaction.update(userRef, {
+          'gamification.totalPoints': current - reward.pointsCost
+        });
+      });
     }
 
     const redemptionData = {

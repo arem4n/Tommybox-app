@@ -85,10 +85,32 @@ service cloud.firestore {
       allow write: if isTrainer();
     }
 
-    // Library: clients can read, only trainer can write
+    // Library: clients can read, only trainer can write valid https URLs
     match /library/{docId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isTrainer();
+      allow create, update: if isTrainer() &&
+        request.resource.data.fileUrl is string &&
+        request.resource.data.fileUrl.matches('https://.*');
+      allow delete: if isTrainer();
+    }
+    // Gamification: pending achievements queue (trainer reviews)
+    match /pendingAchievements/{docId} {
+      allow read, delete: if isTrainer();
+      allow create: if isAuthenticated();
+    }
+
+    // Gamification: approved public achievements feed
+    match /publicAchievements/{docId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isTrainer();
+    }
+
+    // Rewards: redemption records — only owner reads own, trainer reads all
+    match /redemptions/{docId} {
+      allow read: if isTrainer() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isTrainer();
+      allow delete: if isTrainer();
     }
   }
 }

@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(updatedUser as UserProfile & { id: string });
     setIsLoggedIn(true);
     setPendingCompletionUser(null);
-    alert(`¡Bienvenido a TommyBox, ${additionalData.displayName}! 🎉`);
+    // Welcome feedback is handled by the UI transition to the dashboard
   };
 
   return (

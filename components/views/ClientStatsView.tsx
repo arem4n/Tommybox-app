@@ -152,6 +152,15 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
       .sort((a, b) => a.date.localeCompare(b.date))
   , [metrics, selectedExercise]);
 
+  // Total volume per exercise: sum(load * reps)
+  const totalVolume = useMemo(() =>
+    filteredMetrics.reduce((acc, m) => acc + ((m.load || 0) * (m.reps || 0)), 0)
+  , [filteredMetrics]);
+
+  const maxLoad = useMemo(() =>
+    filteredMetrics.reduce((max, m) => Math.max(max, m.load || 0), 0)
+  , [filteredMetrics]);
+
   const handleSaveProfile = async () => {
       if (!editName.trim() || !user?.id) return;
       setSaving(true);
@@ -348,6 +357,20 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
                     )}
                 </div>
             </div>
+        )}
+
+        {/* Volume & Max Load summary — only when an exercise is selected */}
+        {activeTab === 'Rendimiento' && filteredMetrics.length > 0 && (
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="bg-slate-800 rounded-xl p-4 text-center border border-slate-700">
+              <p className="text-slate-400 text-xs font-medium mb-1">Carga Máxima — {selectedExercise}</p>
+              <p className="text-2xl font-black text-white">{maxLoad} <span className="text-sm text-slate-400">kg</span></p>
+            </div>
+            <div className="bg-slate-800 rounded-xl p-4 text-center border border-slate-700">
+              <p className="text-slate-400 text-xs font-medium mb-1">Volumen Total Acumulado</p>
+              <p className="text-2xl font-black text-blue-400">{totalVolume.toLocaleString('es-CL')} <span className="text-sm text-slate-400">kg</span></p>
+            </div>
+          </div>
         )}
 
         {activeTab === 'Perfil' && (

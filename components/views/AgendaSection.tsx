@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Lock, Calendar, Check, Users } from 'lucide-react';
 import { db } from '../../services/firebase';
 import { recalculateGamification } from '../../services/gamification';
-import { collection, query, onSnapshot, where, getDocs, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, getDocs, addDoc, deleteDoc, doc, Timestamp, collectionGroup, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 
 interface Session {
   id: string;
@@ -233,22 +233,28 @@ const AgendaSection = ({ user }: { user: any }) => {
             const dateStr = slotDate.toISOString().split('T')[0];
             const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
 
-            if (i > 0 && takenSlots[slotId]) continue; // Skip future weeks if already taken by someone else
+            if (i > 0 && takenSlots[slotId]) continue; // Skip if already taken
 
-            await addDoc(collection(db, `agenda/${user.id}/events`), {
+            // ── Atomic batch: write both collections together ──
+            const batch = writeBatch(db);
+
+            const eventRef = doc(collection(db, `agenda/${user.id}/events`));
+            batch.set(eventRef, {
               date: dateStr,
               time: modal.sessionTime,
               createdAt: Timestamp.now(),
               isRecurring: modal.isRecurring || false
             });
 
-            await setDoc(doc(db, 'bookedSlots', slotId), {
+            const slotRef = doc(db, 'bookedSlots', slotId);
+            batch.set(slotRef, {
               date: dateStr,
               time: modal.sessionTime,
               bookedBy: user.id,
               createdAt: Timestamp.now()
             });
 
+            await batch.commit();
             successfulBookings++;
         }
 
@@ -264,7 +270,7 @@ const AgendaSection = ({ user }: { user: any }) => {
 
         setModal({ ...modal, type: 'success', message: successMsg });
       } catch(e) {
-        console.error(e);
+        console.error('Booking batch failed:', e);
       }
     }
   };
@@ -278,11 +284,14 @@ const AgendaSection = ({ user }: { user: any }) => {
       const slotId = `${dateStr}_${modal.sessionTime.replace(':', '-')}`;
 
       try {
-        await deleteDoc(doc(db, `agenda/${targetUserId}/events`, modal.existingSessionId));
-        await deleteDoc(doc(db, 'bookedSlots', slotId));
+        // ── Atomic batch: delete both collections together ──
+        const batch = writeBatch(db);
+        batch.delete(doc(db, `agenda/${targetUserId}/events`, modal.existingSessionId));
+        batch.delete(doc(db, 'bookedSlots', slotId));
+        await batch.commit();
         setModal({ ...modal, type: 'none' });
       } catch(e) {
-        console.error(e);
+        console.error('Cancel batch failed:', e);
       }
     }
   }
@@ -382,6 +391,17 @@ const AgendaSection = ({ user }: { user: any }) => {
                </button>
            </div>
        </div>
+
+       {/* Banner for new users eligible for evaluation */}
+       {isEligibleForEvaluation && (
+         <div className="mb-4 flex items-start gap-4 bg-blue-600 text-white rounded-2xl px-5 py-4 shadow-lg">
+           <span className="text-2xl mt-0.5">🎯</span>
+           <div>
+             <p className="font-black text-base">Tu primera sesión es una evaluación gratuita</p>
+             <p className="text-blue-100 text-sm mt-0.5">Elige cualquier horario disponible abajo para agendar tu evaluación inicial sin costo. Tommy te contactará para confirmar.</p>
+           </div>
+         </div>
+       )}
 
        {/* Grid */}
        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">

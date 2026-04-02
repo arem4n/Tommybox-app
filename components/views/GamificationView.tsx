@@ -1,7 +1,7 @@
 import { useModal } from '../../contexts/ModalContext';
 import React, { useState, useEffect } from 'react';
 import { db } from '../../services/firebase';
-import { doc, onSnapshot, addDoc, collection, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, query, where, Timestamp } from 'firebase/firestore';
 import { Flame, CheckCircle, Lock } from 'lucide-react';
 import {
     ACHIEVEMENT_CATALOG,
@@ -57,7 +57,18 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
     const [recoveryNotes, setRecoveryNotes] = useState<string>('');
     const [successMessage, setSuccessMessage] = useState<string>('');
     const [newBadge, setNewBadge] = useState<{ icon: string; name: string; rarity: string } | null>(null);
-    const [prevBadgeIds, setPrevBadgeIds] = useState<Set<string>>(new Set());
+    const [monthSessions, setMonthSessions] = useState<number>(0);
+
+    // Persist seen badge IDs in localStorage to survive re-mounts
+    const getStoredBadgeIds = (): Set<string> => {
+        try {
+            const raw = localStorage.getItem(`tb_badges_${user?.id}`);
+            return raw ? new Set(JSON.parse(raw)) : new Set();
+        } catch { return new Set(); }
+    };
+    const storeBadgeIds = (ids: Set<string>) => {
+        try { localStorage.setItem(`tb_badges_${user?.id}`, JSON.stringify([...ids])); } catch {}
+    };
 
     useEffect(() => {
         if (!user?.id) return;
@@ -66,18 +77,20 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
                 const data = docSnap.data();
                 if (data.gamification) {
                     const newGam: GamificationProfile = data.gamification;
-                    // Detect newly unlocked badges
-                    const newBadgeIds = new Set((newGam.badges || []).map((b: any) => b.id));
-                    if (prevBadgeIds.size > 0) {
+                    const incoming = new Set((newGam.badges || []).map((b: any) => b.id as string));
+                    const stored = getStoredBadgeIds();
+
+                    // Only show popup for genuinely new badges (not seen before this session)
+                    if (stored.size > 0) {
                         for (const badge of (newGam.badges || [])) {
-                            if (!prevBadgeIds.has(badge.id)) {
+                            if (!stored.has(badge.id)) {
                                 setNewBadge({ icon: badge.icon, name: badge.name, rarity: badge.rarity });
-                                setTimeout(() => setNewBadge(null), 5000);
+                                setTimeout(() => setNewBadge(null), 6000);
                                 break;
                             }
                         }
                     }
-                    setPrevBadgeIds(newBadgeIds);
+                    storeBadgeIds(incoming);
                     setGamification(newGam);
                 }
             }
@@ -88,6 +101,22 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
     useEffect(() => {
         if (!user?.id) return;
         canPerformAction(user.id, 'POST_WORKOUT_SENSATION').then(setCanRegisterFeeling);
+    }, [user?.id]);
+
+    // Fetch real current-month sessions count
+    useEffect(() => {
+        if (!user?.id) return;
+        const now = new Date();
+        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const q = query(
+            collection(db, `agenda/${user.id}/events`),
+            where('date', '>=', `${monthPrefix}-01`),
+            where('date', '<=', `${monthPrefix}-31`)
+        );
+        const unsub = onSnapshot(q, snap => {
+            setMonthSessions(snap.size);
+        });
+        return () => unsub();
     }, [user?.id]);
 
     const handleRegisterFeeling = async () => {
@@ -118,10 +147,6 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
     const { level, progress, currentXpInLevel, xpForNextLevel } = calculateLevelInfo(totalPoints);
     const currentStreak = gamification?.streaks?.[0]?.current || 0;
     const bestStreak = gamification?.streaks?.[0]?.best || 0;
-    const totalSessions = gamification?.achievements?.find(a => a.id === 'ach_asistencia_25')?.progress ||
-        gamification?.achievements?.find(a => a.id === 'ach_asistencia_10')?.progress || 0;
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
 
     return (
         <div className="space-y-6">
@@ -240,31 +265,25 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
             </div>
 
             {/* Monthly Challenge */}
-            {(() => {
-              const now = new Date();
-              const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-              const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-              const monthProgress = Math.min(gamification?.achievements?.find(a => a.id === 'ach_asistencia_10')?.progress || 0, MONTHLY_CHALLENGE.target);
-              const pct = Math.round((monthProgress / MONTHLY_CHALLENGE.target) * 100);
-              return (
-                <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <span className="text-xs font-black uppercase tracking-widest text-blue-200">{MONTHLY_CHALLENGE.label}</span>
-                      <h3 className="text-lg font-black">{MONTHLY_CHALLENGE.description}</h3>
-                    </div>
-                    <span className="text-3xl">🎯</span>
-                  </div>
-                  <div className="w-full bg-blue-900/50 rounded-full h-3 mb-2">
-                    <div className="bg-white h-3 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
-                  </div>
-                  <div className="flex justify-between text-xs text-blue-200">
-                    <span>{monthProgress}/{MONTHLY_CHALLENGE.target} sesiones</span>
-                    <span>🏅 {MONTHLY_CHALLENGE.reward}</span>
-                  </div>
+            <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <span className="text-xs font-black uppercase tracking-widest text-blue-200">{MONTHLY_CHALLENGE.label}</span>
+                  <h3 className="text-lg font-black">{MONTHLY_CHALLENGE.description}</h3>
                 </div>
-              );
-            })()}
+                <span className="text-3xl">🎯</span>
+              </div>
+              <div className="w-full bg-blue-900/50 rounded-full h-3 mb-2">
+                <div
+                  className="bg-white h-3 rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(Math.round((monthSessions / MONTHLY_CHALLENGE.target) * 100), 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-blue-200">
+                <span>{Math.min(monthSessions, MONTHLY_CHALLENGE.target)}/{MONTHLY_CHALLENGE.target} sesiones este mes</span>
+                <span>🏅 {MONTHLY_CHALLENGE.reward}</span>
+              </div>
+            </div>
 
             {/* Tabs */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

@@ -1,4 +1,4 @@
-import React, { useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 const AgendaSection = lazy(() => import('./AgendaSection'));
 const CommunitySection = lazy(() => import('./CommunitySection'));
@@ -6,7 +6,7 @@ const PlansSection = lazy(() => import('./PlansSection'));
 const LibrarySection = lazy(() => import('./LibrarySection'));
 import ClientStatsView from './ClientStatsView';
 const TrainerDashboard = lazy(() => import('./TrainerDashboard'));
-import { Calendar, Users, Star, User, LogOut, Trophy, Loader2, BookOpen } from 'lucide-react';
+import { Calendar, MessageCircle, CreditCard, User, LogOut, Trophy, Loader2, BookOpen } from 'lucide-react';
 const GamificationView = lazy(() => import('./GamificationView'));
 import { signOut } from '../../lib/auth';
 
@@ -20,7 +20,8 @@ interface DashboardLayoutProps {
   user: any;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) => {
+  const [user, setUser] = useState(initialUser);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const currentTab = searchParams.get('tab') || 'agenda';
@@ -45,12 +46,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
   }
 
   const tabs = [
-    { id: 'agenda', label: 'Agenda', imgSrc: '/custom-icons/nav_calendar.png' },
-    { id: 'community', label: 'Comunidad', imgSrc: '/custom-icons/nav_community.png' },
-    { id: 'plan', label: 'Mi Plan', imgSrc: '/custom-icons/nav_plan.png' },
-    { id: 'logros', label: 'Logros', imgSrc: '/custom-icons/nav_achievements.png' },
-    { id: 'biblioteca', label: 'Biblioteca', icon: BookOpen },
-    { id: 'profile', label: 'Mi Perfil', imgSrc: '/custom-icons/nav_profile.png' },
+    { id: 'agenda',     label: 'Agenda',     imgSrc: '/custom-icons/nav_calendar.png' },
+    { id: 'community',  label: 'Comunidad',  imgSrc: '/custom-icons/nav_community.png' },
+    { id: 'plan',       label: 'Mi Plan',    imgSrc: '/custom-icons/nav_plan.png' },
+    { id: 'logros',     label: 'Logros',     imgSrc: '/custom-icons/nav_achievements.png' },
+    { id: 'biblioteca', label: 'Biblioteca', imgSrc: '/custom-icons/nav_library.png' },
+    { id: 'profile',    label: 'Mi Perfil',  imgSrc: '/custom-icons/nav_profile.png' },
   ];
 
   return (
@@ -93,11 +94,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
                         : 'border-transparent text-slate-300 hover:text-white hover:border-slate-700 opacity-60 hover:opacity-100'
                     }`}
                 >
-                    {tab.imgSrc ? (
-                      <img src={tab.imgSrc} alt={tab.label} className="w-7 h-7 sm:w-6 sm:h-6 mb-1 sm:mb-0 mix-blend-screen" />
-                    ) : (
-                      <tab.icon size={24} className="mb-1 sm:mb-0 sm:w-5 sm:h-5" />
-                    )}
+                  <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 mb-1 sm:mb-0 opacity-90" />
                     <span>{tab.label}</span>
                 </button>
             ))}
@@ -112,7 +109,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user }) => {
           {currentTab === 'plan' && <PlansSection user={user} />}
           {currentTab === 'logros' && <GamificationView user={user} />}
           {currentTab === 'biblioteca' && <LibrarySection user={user} />}
-          {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => {}} />}
+          {currentTab === 'profile' && <ClientStatsView user={user} onUserUpdate={(updated) => setUser(updated as any)} />}
         </div>
       </main>
     </div></Suspense>
