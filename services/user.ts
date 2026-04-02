@@ -25,7 +25,7 @@ export const initializeNewUser = async (firebaseUser: User): Promise<UserProfile
         email: firebaseUser.email || '',
         username: firebaseUser.email?.split('@')[0] || 'user',
         displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario',
-        isTrainer: firebaseUser.email === 'sergio.areman@gmail.com',
+        isTrainer: false,
         createdAt: Timestamp.now() as any,
         gamification: createDefaultGamificationProfile(firebaseUser.uid),
         registrationCompleted: false,

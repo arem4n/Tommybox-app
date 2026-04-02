@@ -14,6 +14,4 @@ export const views: { [key: string]: string } = {
   PROFILE: 'profile',
 };
 
-export const DEMO_TRAINER_EMAIL = 'admin@tomybox.com';
-export const DEMO_TRAINER_PASSWORD = '12345678';
 export const TRAINER_PHONE_NUMBER = '56987654321';
