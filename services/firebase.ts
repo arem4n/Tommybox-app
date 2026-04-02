@@ -9,7 +9,7 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
-let appId: string = firebaseConfig.appId || 'default-app-id';
+const appId: string = firebaseConfig.appId || 'default-app-id';
 
 try {
     if (Object.keys(firebaseConfig).length > 0) {

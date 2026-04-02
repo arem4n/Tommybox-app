@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = subscribeToAuth(async (firebaseUser) => {
       setLoading(true);
       if (firebaseUser) {
-        let profile = await getUserProfile(firebaseUser.uid);
+        const profile = await getUserProfile(firebaseUser.uid);
         
         if (profile) {
           if (!profile.registrationCompleted) {
