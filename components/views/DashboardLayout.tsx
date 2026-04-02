@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { AppUser } from '../../types';
 const AgendaSection = lazy(() => import('./AgendaSection'));
 const CommunitySection = lazy(() => import('./CommunitySection'));
 const PlansSection = lazy(() => import('./PlansSection'));
@@ -17,8 +18,9 @@ const LoadingSpinner = () => (
 );
 
 interface DashboardLayoutProps {
-  user: any;
+  user: AppUser;
 }
+
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) => {
   const [user, setUser] = useState(initialUser);

@@ -44,6 +44,12 @@ service cloud.firestore {
         allow update, delete: if isOwner(userId) || isTrainer();
       }
 
+      match /restrictions/{restrictionId} {
+        // Trainer manages restrictions; client can only read their own
+        allow read: if isOwner(userId) || isTrainer();
+        allow create, update, delete: if isTrainer();
+      }
+
       match /dailyTrackers/{date} {
         allow read: if isOwner(userId) || isTrainer();
         allow create, update: if isOwner(userId) || isTrainer();

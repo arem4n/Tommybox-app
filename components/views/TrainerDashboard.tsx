@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { AppUser } from '../../types';
 import { db } from '../../services/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { Users, Calendar, LogOut, ChevronDown, Info, MessageCircle, CreditCard, CheckCircle, BookOpen } from 'lucide-react';
+import { Users, Calendar, LogOut, ChevronDown, Info, MessageCircle, CreditCard, CheckCircle, BookOpen, ArrowRight, CheckSquare, Layers } from 'lucide-react';
 import AgendaSection from './AgendaSection';
 import CommunitySection from './CommunitySection';
 import ClientProfileView from './ClientProfileView';
@@ -11,12 +12,17 @@ import TrainerPlansManager from './TrainerPlansManager';
 import { getPlanName } from '../../utils/plans';
 import { useModal } from "../../contexts/ModalContext";
 
-const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
+type PrimaryTab = 'clients' | 'agenda' | 'asistencia';
+type SecondaryTab = 'planes' | 'payments' | 'biblioteca' | 'community';
+type CurrentTab = PrimaryTab | SecondaryTab;
+
+const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => void }) => {
   const { showAlert, showConfirm } = useModal();
-  const [currentTab, setCurrentTab] = useState<'clients' | 'agenda' | 'community' | 'payments' | 'biblioteca' | 'asistencia' | 'planes'>('clients');
+  const [currentTab, setCurrentTab] = useState<CurrentTab>('clients');
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [hasPlans, setHasPlans] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'users'));
@@ -27,9 +33,24 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
     return () => unsubscribe();
   }, []);
 
+  // Check if trainer has configured plans
+  useEffect(() => {
+    const q = query(collection(db, 'trainerPlans'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHasPlans(snapshot.docs.length > 0);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const activeClients = clients.filter(c => c.status !== 'archived');
   const archivedClients = clients.filter(c => c.status === 'archived');
   const pendingPayments = clients.filter(c => c.paymentStatus === 'pending_verification');
+
+  // Onboarding steps
+  const profileComplete = !!(user?.displayName && user?.photoURL);
+  const plansConfigured = hasPlans;
+  const hasInvitedClient = activeClients.length > 0;
+  const onboardingDone = profileComplete && plansConfigured && hasInvitedClient;
 
   const approvePayment = async (clientId: string) => {
     try {
@@ -60,15 +81,20 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
     return <ClientProfileView client={selectedClient} onBack={() => setSelectedClient(null)} />;
   }
 
-  const tabs = [
-    { id: 'clients',     label: 'Clientes',    imgSrc: '/custom-icons/nav_clients.png' },
-    { id: 'agenda',      label: 'Agenda',       imgSrc: '/custom-icons/nav_calendar.png' },
-    { id: 'asistencia',  label: 'Asistencia',   imgSrc: '/custom-icons/nav_achievements.png' },
-    { id: 'community',   label: 'Comunidad',    imgSrc: '/custom-icons/nav_community.png' },
-    { id: 'planes',      label: 'Planes',       imgSrc: '/custom-icons/nav_plan.png' },
-    { id: 'payments',    label: 'Pagos',        imgSrc: '/custom-icons/nav_payments.png' },
-    { id: 'biblioteca',  label: 'Biblioteca',   imgSrc: '/custom-icons/nav_library.png' },
+  const primaryTabs = [
+    { id: 'clients',    label: 'Clientes',   imgSrc: '/custom-icons/nav_clients.png' },
+    { id: 'agenda',     label: 'Agenda',      imgSrc: '/custom-icons/nav_calendar.png' },
+    { id: 'asistencia', label: 'Asistencia',  imgSrc: '/custom-icons/nav_achievements.png' },
   ];
+
+  const secondaryTabs = [
+    { id: 'planes',     label: 'Planes',      imgSrc: '/custom-icons/nav_plan.png' },
+    { id: 'payments',   label: 'Pagos',       imgSrc: '/custom-icons/nav_payments.png', badge: pendingPayments.length },
+    { id: 'biblioteca', label: 'Biblioteca',  imgSrc: '/custom-icons/nav_library.png' },
+    { id: 'community',  label: 'Comunidad',   imgSrc: '/custom-icons/nav_community.png' },
+  ];
+
+  const isPrimary = primaryTabs.some(t => t.id === currentTab);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -76,7 +102,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
       {/* ── Header ── */}
       <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-10 shadow-lg shadow-black/20">
 
-        {/* Row 1 */}
+        {/* Row 1 — Logo + User */}
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center">
             <img src="/logo-header.png" alt="TommyBox" className="h-9 object-contain" />
@@ -93,26 +119,134 @@ const TrainerDashboard = ({ user, onLogout }: { user: any, onLogout: () => void 
           </div>
         </div>
 
-        {/* Row 2 — Tabs */}
+        {/* Row 2 — Primary Tabs */}
         <div className="bg-slate-900 border-t border-slate-800">
-          <div className="container mx-auto px-2 sm:px-4 flex">
-            {tabs.map(tab => (
+          <div className="container mx-auto px-2 sm:px-4 flex items-center">
+            {primaryTabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setCurrentTab(tab.id as any)}
+                onClick={() => setCurrentTab(tab.id as CurrentTab)}
                 className={`flex flex-col sm:flex-row items-center justify-center sm:gap-2 py-3 px-2 sm:px-5 font-bold text-[10px] sm:text-sm transition-all border-b-2 flex-1 sm:flex-none whitespace-nowrap ${
                   currentTab === tab.id
                     ? 'border-blue-400 text-blue-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
                 }`}
               >
-                  <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 mb-1 sm:mb-0 opacity-90" />
+                <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 mb-1 sm:mb-0 opacity-90" />
                 <span>{tab.label}</span>
               </button>
             ))}
+
+            {/* Separator */}
+            <div className="hidden sm:block w-px h-8 bg-slate-700 mx-2" />
+
+            {/* Secondary Tabs — collapsed label on mobile */}
+            <div className="flex flex-1 sm:flex-none">
+              {secondaryTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id as CurrentTab)}
+                  className={`relative flex flex-col sm:flex-row items-center justify-center sm:gap-2 py-3 px-2 sm:px-4 font-medium text-[10px] sm:text-xs transition-all border-b-2 flex-1 sm:flex-none whitespace-nowrap ${
+                    currentTab === tab.id
+                      ? 'border-slate-400 text-slate-200'
+                      : 'border-transparent text-slate-600 hover:text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 mb-1 sm:mb-0 opacity-70" />
+                  <span>{tab.label}</span>
+                  {(tab as any).badge > 0 && (
+                    <span className="absolute top-1.5 right-1 bg-red-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                      {(tab as any).badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3 — Section label */}
+        <div className="bg-slate-950 border-t border-slate-900/60 py-1 px-4">
+          <div className="container mx-auto flex items-center gap-2">
+            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${isPrimary ? 'text-blue-400 bg-blue-950/60' : 'text-slate-400 bg-slate-800/60'}`}>
+              {isPrimary ? 'Principal' : 'Gestión'}
+            </span>
           </div>
         </div>
       </header>
+
+      {/* ── Onboarding Banner ── */}
+      {!onboardingDone && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-4 shadow-md">
+          <div className="container mx-auto max-w-6xl">
+            <p className="text-xs font-black uppercase tracking-wider text-blue-200 mb-3">🚀 Primeros pasos como entrenador</p>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+
+              {/* Step 1 */}
+              <button
+                onClick={() => {/* navigate to profile */}}
+                className={`flex items-center gap-3 flex-1 rounded-xl px-4 py-3 transition-all ${
+                  profileComplete
+                    ? 'bg-white/20 opacity-60'
+                    : 'bg-white/10 hover:bg-white/20 border border-white/30'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-black text-sm ${profileComplete ? 'bg-green-400 text-white' : 'bg-white/20 text-white'}`}>
+                  {profileComplete ? <CheckSquare size={16} /> : '1'}
+                </div>
+                <div className="text-left">
+                  <p className={`text-xs font-black ${profileComplete ? 'line-through opacity-60' : ''}`}>Completa tu perfil</p>
+                  <p className="text-[10px] text-blue-200 hidden sm:block">Foto y nombre visible para atletas</p>
+                </div>
+              </button>
+
+              <ArrowRight size={16} className="text-blue-300 hidden sm:block flex-shrink-0" />
+
+              {/* Step 2 */}
+              <button
+                onClick={() => setCurrentTab('planes')}
+                className={`flex items-center gap-3 flex-1 rounded-xl px-4 py-3 transition-all ${
+                  plansConfigured
+                    ? 'bg-white/20 opacity-60'
+                    : !profileComplete
+                      ? 'opacity-40 cursor-not-allowed bg-white/5 border border-white/10'
+                      : 'bg-white/10 hover:bg-white/20 border border-white/30'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-black text-sm ${plansConfigured ? 'bg-green-400 text-white' : 'bg-white/20 text-white'}`}>
+                  {plansConfigured ? <CheckSquare size={16} /> : '2'}
+                </div>
+                <div className="text-left">
+                  <p className={`text-xs font-black ${plansConfigured ? 'line-through opacity-60' : ''}`}>Configura tus planes</p>
+                  <p className="text-[10px] text-blue-200 hidden sm:block">Define precios y frecuencias</p>
+                </div>
+              </button>
+
+              <ArrowRight size={16} className="text-blue-300 hidden sm:block flex-shrink-0" />
+
+              {/* Step 3 */}
+              <div
+                className={`flex items-center gap-3 flex-1 rounded-xl px-4 py-3 transition-all ${
+                  hasInvitedClient
+                    ? 'bg-white/20 opacity-60'
+                    : !plansConfigured
+                      ? 'opacity-40 bg-white/5 border border-white/10'
+                      : 'bg-white/10 border border-white/30'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-black text-sm ${hasInvitedClient ? 'bg-green-400 text-white' : 'bg-white/20 text-white'}`}>
+                  {hasInvitedClient ? <CheckSquare size={16} /> : '3'}
+                </div>
+                <div className="text-left">
+                  <p className={`text-xs font-black ${hasInvitedClient ? 'line-through opacity-60' : ''}`}>Invita tu primer cliente</p>
+                  <p className="text-[10px] text-blue-200 hidden sm:block">Comparte el link de registro</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Main ── */}
       <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in">

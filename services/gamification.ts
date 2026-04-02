@@ -64,6 +64,11 @@ export async function recalculateGamification(userId: string): Promise<void> {
     const feelingsRef = collection(db, `users/${userId}/feelings`);
     const feelingsSnap = await getDocs(feelingsRef);
     const totalFeelings = feelingsSnap.size;
+    // Sum actual XP per feeling using stored effortBonus (0 if legacy doc without the field)
+    const feelingPoints = feelingsSnap.docs.reduce(
+      (sum, d) => sum + 5 + ((d.data().effortBonus as number) ?? 0),
+      0
+    );
 
     const totalSessions = sessionDates.length;
 
@@ -185,7 +190,7 @@ export async function recalculateGamification(userId: string): Promise<void> {
     }
 
     // Points calculation (idempotent)
-    const basePoints = (totalSessions * 10) + (totalFeelings * 5);
+    const basePoints = (totalSessions * 10) + feelingPoints;
     const totalPoints = basePoints + achievementPoints + badgePoints;
 
     const levelInfo = calculateLevelInfo(totalPoints);

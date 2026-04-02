@@ -4,6 +4,23 @@ import { Timestamp } from 'firebase/firestore';
 
 export type View = 'home' | 'plans' | 'login';
 
+/** Authenticated user with Firestore document id attached. Use this everywhere instead of `user: any`. */
+export type AppUser = UserProfile & { id: string };
+
+/** Tipo de sesión de entrenamiento */
+export type SessionType = 'Fuerza' | 'Hipertrofia' | 'Potencia' | 'Movilidad' | 'Evaluación' | 'Deload';
+
+/** Colores consistentes por tipo — compartidos entre grid, modales y gráficos */
+export const SESSION_TYPE_CONFIG: Record<SessionType, { label: string; color: string; bg: string; border: string; text: string }> = {
+  Fuerza:      { label: 'Fuerza',      color: '#3b82f6', bg: 'bg-blue-100',   border: 'border-blue-300',   text: 'text-blue-700' },
+  Hipertrofia: { label: 'Hipertrofia', color: '#8b5cf6', bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-700' },
+  Potencia:    { label: 'Potencia',    color: '#f97316', bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-700' },
+  Movilidad:   { label: 'Movilidad',  color: '#10b981', bg: 'bg-green-100',  border: 'border-green-300',  text: 'text-green-700' },
+  Evaluación:  { label: 'Evaluación', color: '#eab308', bg: 'bg-yellow-100', border: 'border-yellow-300', text: 'text-yellow-700' },
+  Deload:      { label: 'Deload',     color: '#6b7280', bg: 'bg-gray-100',   border: 'border-gray-300',   text: 'text-gray-600' },
+};
+
+
 export interface Plan {
   name: string;
   price: string;
@@ -16,6 +33,7 @@ export interface Session {
   date: string;
   time: string;
   timestamp: Timestamp;
+  sessionType?: SessionType;
 }
 
 export interface Metric {
@@ -26,6 +44,16 @@ export interface Metric {
     rpe?: number; // Rate of Perceived Exertion (1-10)
     date: string;
     timestamp: Timestamp;
+}
+
+export interface Restriction {
+  id: string;
+  description: string;
+  affectedZone: string;
+  severity: 'leve' | 'moderada' | 'severa';
+  active: boolean;
+  createdAt: Timestamp;
+  resolvedAt?: Timestamp;
 }
 
 export interface Observation {
@@ -112,6 +140,10 @@ export interface UserProfile {
     paymentStatus?: string;
     status?: string;
     archivedAt?: Timestamp;
+    assignedTrainerId?: string;
+    weight?: number;
+    height?: number;
+    build?: string;
 }
 
 export interface DailyActionTracker {
