@@ -46,6 +46,16 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
     return () => unsubscribe();
   }, []);
 
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobileMenuOpen]);
+
   const activeClients = clients.filter(c => c.status !== 'archived');
   const archivedClients = clients.filter(c => c.status === 'archived');
   const pendingPayments = clients.filter(c => c.paymentStatus === 'pending_verification');
@@ -106,20 +116,38 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* ── Header ── */}
-      <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-20 shadow-lg shadow-black/20">
+      <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-50 shadow-lg shadow-black/20">
 
-        {/* Row 1 — Logo + User */}
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
+        {/* Row 1 & 2 (Mobile Stacking) / Row 1 (Desktop) */}
+        <div className="container mx-auto px-4 py-3 md:h-16 flex flex-col md:flex-row items-center justify-between relative">
 
-          {/* Mobile Hamburger */}
-          <div className="md:hidden absolute left-4 z-30">
+          {/* Top section for Mobile: Logo Center, Logout Right */}
+          <div className="flex items-center w-full justify-between md:hidden relative mb-3">
+             <div className="flex-1 flex justify-center pl-8">
+                 <img src="/logo-header.png" alt="TommyBox" className="h-8 object-contain" />
+             </div>
+             <div className="absolute right-0 top-0">
+               <button
+                  onClick={onLogout}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-lg transition-colors text-sm font-medium"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+             </div>
+          </div>
+
+          {/* Desktop Logo */}
+          <div className="hidden md:flex items-center w-full justify-start md:pl-0">
+            <img src="/logo-header.png" alt="TommyBox" className="h-9 object-contain" />
+          </div>
+
+          {/* Hamburger (Left on mobile, below logo visually) */}
+          <div className="w-full flex justify-start md:hidden relative z-50">
             <HamburgerIcon isOpen={isMobileMenuOpen} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
           </div>
 
-          <div className="flex items-center w-full justify-center md:justify-start md:pl-0">
-            <img src="/logo-header.png" alt="TommyBox" className="h-9 object-contain" />
-          </div>
-          <div className="flex items-center gap-4 absolute right-4">
+          {/* Desktop Logout/User */}
+          <div className="hidden md:flex items-center gap-4 absolute right-4">
             <span className="text-sm font-medium text-slate-400 hidden sm:block">{user?.displayName}</span>
             <button
               onClick={onLogout}
@@ -146,7 +174,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                       : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
                   }`}
                 >
-                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 opacity-90" />
+                  <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 md:w-7 md:h-7 opacity-90" />
                   <span>{tab.label}</span>
                 </button>
               ))}
@@ -171,7 +199,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                       : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
                   }`}
                 >
-                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 opacity-70" />
+                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 md:w-6 md:h-6 opacity-70" />
                   <span>{tab.label}</span>
                   {(tab as any).badge > 0 && (
                     <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
@@ -196,20 +224,11 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
 
       {/* Drawer */}
       <div
-        className={`fixed inset-y-0 left-0 w-[75%] max-w-sm bg-slate-950 z-40 md:hidden transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col ${
+        className={`fixed inset-y-0 left-0 w-[75%] max-w-sm bg-slate-950 z-40 md:hidden transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col pt-[100px] ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-4 border-b border-slate-800 flex items-center h-16 shrink-0 relative">
-             <img src="/logo-header.png" alt="TommyBox" className="h-8 object-contain" />
-             <div className="absolute right-4">
-                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white transition-colors">
-                     <X size={24} />
-                 </button>
-             </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto py-4 space-y-1">
+        <div className="flex-1 overflow-y-auto py-2 space-y-1">
           {/* Primary Tabs */}
           {primaryTabs.map(tab => (
             <button
@@ -221,7 +240,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                   : 'text-slate-300 hover:bg-slate-900 hover:text-white border-l-4 border-transparent'
               }`}
             >
-              <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 opacity-90" />
+              <img src={tab.imgSrc} alt={tab.label} className="w-7 h-7 opacity-90" />
               <span className="font-bold text-sm">{tab.label}</span>
             </button>
           ))}
@@ -244,7 +263,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                   : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border-l-4 border-transparent'
               }`}
             >
-              <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 opacity-70" />
+              <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 md:w-6 md:h-6 opacity-70" />
               <span className="font-bold text-sm">{tab.label}</span>
               {(tab as any).badge > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center leading-none">
@@ -330,7 +349,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
       )}
 
       {/* ── Main ── */}
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in">
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in" key={currentTab}>
 
         {currentTab === 'agenda'      && <AgendaSection user={user} />}
         {currentTab === 'community'   && <CommunitySection user={user} />}

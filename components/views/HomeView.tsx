@@ -58,10 +58,10 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
       {/* ── Header ── */}
       <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 shadow-lg shadow-black/20">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <img src="/logo-header.png" alt="TommyBox" className="h-10 object-contain" />
+          <img src="/logo-header.png" alt="TommyBox" className="h-7 object-contain" />
           <button
             onClick={() => setShowLoginModal(true)}
-            className="px-5 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 text-sm"
+            className="px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 text-sm"
           >
             Iniciar sesión
           </button>
@@ -144,81 +144,62 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
           </div>
         </div>
 
-        {/* ── Testimonials ── */}
-        <div className="bg-slate-900 border-t border-slate-800 py-20 w-full">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-white md:text-4xl">
-                Lo que dicen nuestros <span className="text-blue-400">atletas</span>
-              </h2>
-              <div className="mt-4 w-24 h-1 bg-blue-600 mx-auto rounded-full" />
-            </div>
 
-            <div
-              className="relative max-w-6xl mx-auto"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
-            >
-              <div className="overflow-hidden px-4">
-                <div
-                  className="flex transition-transform duration-500 ease-in-out gap-6"
-                  style={{ transform: `translateX(-${currentIndex * (100 / itemsPerPage)}%)` }}
-                >
-                  {testimonials.map((t, idx) => (
-                    <div
-                      key={idx}
-                      className="w-full shrink-0"
-                      style={{ width: `calc(${100 / itemsPerPage}% - ${((itemsPerPage - 1) * 24) / itemsPerPage}px)` }}
-                    >
-                      <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-xl h-full flex flex-col justify-between hover:border-blue-800/50 transition-all duration-300 relative">
-                        <Quote className="absolute top-6 left-6 text-slate-800 w-10 h-10 z-0" />
-                        <p className="text-slate-300 italic text-lg leading-relaxed relative z-10 font-medium mb-6">
-                          "{t.text}"
-                        </p>
-                        <div className="flex items-center justify-between border-t border-slate-800 pt-5 mt-auto">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                              {t.author.charAt(0)}
-                            </div>
-                            <p className="font-bold text-white">{t.author}</p>
-                          </div>
-                          <div className="flex">
-                            {[...Array(t.rating)].map((_, i) => (
-                              <Star key={i} className="text-yellow-400 fill-yellow-400" size={16} />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+        {/* ── Banner Section ── */}
+        <div className="w-full h-64 md:h-96 bg-slate-900 relative mt-20 md:mt-32">
+           <img
+              src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop"
+              alt="Gym Equipment"
+              className="w-full h-full object-cover opacity-40 mix-blend-overlay"
+           />
+           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent"></div>
+           <div className="absolute inset-0 flex items-center justify-center">
+              <h2 className="text-3xl md:text-5xl font-black text-white tracking-widest uppercase opacity-90 drop-shadow-2xl">Supera tus límites</h2>
+           </div>
+        </div>
+
+        {/* ── Testimonials ── */}
+        <div className="bg-slate-900 border-t border-slate-800 py-20 w-full overflow-hidden">
+          <div className="container mx-auto px-4 mb-12 text-center md:text-left">
+            <h2 className="text-3xl font-bold text-white md:text-4xl">
+              Lo que dicen nuestros <span className="text-blue-400">atletas</span>
+            </h2>
+            <div className="mt-4 w-24 h-1 bg-blue-600 mx-auto md:mx-0 rounded-full" />
+          </div>
+
+          {/* Swipeable Container */}
+          <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-10 pl-4 md:pl-[calc((100vw-1152px)/2+1rem)] gap-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {testimonials.map((t, idx) => (
+              <div
+                key={idx}
+                className="snap-center shrink-0 w-[85vw] sm:w-[350px] md:w-[400px]"
+              >
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-2xl h-full flex flex-col justify-between hover:border-blue-800/50 transition-all duration-300 relative group">
+                  <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                     <Quote className="w-20 h-20 text-blue-500" />
+                  </div>
+                  <div className="flex mb-6">
+                    {[...Array(t.rating)].map((_, i) => (
+                      <Star key={i} className="text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={18} />
+                    ))}
+                  </div>
+                  <p className="text-slate-300 text-lg leading-relaxed relative z-10 font-medium mb-8">
+                    "{t.text}"
+                  </p>
+                  <div className="flex items-center gap-4 mt-auto">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-blue-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                      {t.author.charAt(0)}
                     </div>
-                  ))}
+                    <div>
+                        <p className="font-bold text-white">{t.author}</p>
+                        <p className="text-xs text-slate-500">Atleta TommyBox</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Nav buttons */}
-              <button
-                onClick={prevSlide}
-                className="absolute -left-4 md:-left-12 top-1/2 -translate-y-1/2 bg-slate-800 border border-slate-700 p-3 rounded-full shadow-xl text-blue-400 hover:bg-slate-700 transition-colors z-20"
-              >
-                <ChevronLeft size={22} />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute -right-4 md:-right-12 top-1/2 -translate-y-1/2 bg-slate-800 border border-slate-700 p-3 rounded-full shadow-xl text-blue-400 hover:bg-slate-700 transition-colors z-20"
-              >
-                <ChevronRight size={22} />
-              </button>
-
-              {/* Dots */}
-              <div className="flex justify-center gap-2 mt-10">
-                {Array.from({ length: testimonials.length - itemsPerPage + 1 }).map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentIndex(idx)}
-                    className={`h-2 rounded-full transition-all duration-300 ${currentIndex === idx ? 'w-8 bg-blue-500' : 'w-2 bg-slate-700 hover:bg-slate-500'}`}
-                  />
-                ))}
-              </div>
-            </div>
+            ))}
+            {/* Right padding element so the last card can be centered/viewed properly */}
+            <div className="shrink-0 w-4 md:w-[calc((100vw-1152px)/2)]" aria-hidden="true"></div>
           </div>
         </div>
 

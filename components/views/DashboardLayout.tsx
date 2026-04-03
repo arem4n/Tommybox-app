@@ -96,7 +96,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) 
                         : 'border-transparent text-slate-300 hover:text-white hover:border-slate-700 opacity-60 hover:opacity-100'
                     }`}
                 >
-                  <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 mb-1 sm:mb-0 opacity-90" />
+                  <img src={tab.imgSrc} alt={tab.label} className="w-7 h-7 md:w-8 md:h-8 mb-1 sm:mb-0 opacity-90 drop-shadow-md" />
                     <span>{tab.label}</span>
                 </button>
             ))}
@@ -104,7 +104,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) 
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in" key={currentTab}>
         <div className="bg-transparent min-h-[50vh]">
           {currentTab === 'agenda' && <AgendaSection user={user} />}
           {currentTab === 'community' && <CommunitySection user={user} />}
