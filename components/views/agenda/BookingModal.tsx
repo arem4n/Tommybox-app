@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Lock, Calendar, Check, Users, Edit2 } from 'lucide-react';
+import { X, Lock, Calendar, Check, Users, Edit2, Clock } from 'lucide-react';
 import { BookedSession, TakenSlots } from '../../../hooks/useAgenda';
 import { SessionType, SESSION_TYPE_CONFIG } from '../../../types';
 import { DAYS, TIMES } from './AgendaGrid';
@@ -12,8 +12,10 @@ export interface ModalState {
   message?: string;
   clientName?: string;
   isRecurring?: boolean;
-  existingSessionId?: string;
   userId?: string;
+  existingSessionId?: string;
+  status?: 'pending' | 'confirmed' | 'rejected';
+  rejectionReason?: string;
   newTime?: string;
   sessionType?: SessionType;
 }
@@ -31,11 +33,12 @@ interface BookingModalProps {
   onConfirmBooking: () => void;
   onCancelBooking: () => void;
   onModifyBooking: () => void;
+  onUpdateStatus?: (status: 'confirmed' | 'rejected', reason?: string) => void;
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({
   modal, setModal, startOfWeek, isTrainer, takenSlots,
-  onConfirmBooking, onCancelBooking, onModifyBooking,
+  onConfirmBooking, onCancelBooking, onModifyBooking, onUpdateStatus,
 }) => {
   if (modal.type === 'none') return null;
 
@@ -146,6 +149,28 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
             </div>
+            
+            {modal.status === 'pending' && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                <p className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2">
+                  <Clock size={16} /> Sesión pendiente de validar
+                </p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => onUpdateStatus?.('confirmed')}
+                    className="flex-1 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-xs"
+                  >
+                    <Check size={14} /> Confirmar
+                  </button>
+                  <button 
+                    onClick={() => setModal({ ...modal, type: 'cancel' })}
+                    className="flex-1 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2 text-xs border border-red-200"
+                  >
+                    <X size={14} /> Rechazar
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="bg-blue-50 rounded-2xl p-4 mb-4 border border-blue-100">
               <p className="text-xs font-black text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -188,11 +213,28 @@ const BookingModal: React.FC<BookingModalProps> = ({
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
               <X size={32} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Cancelar Reserva</h3>
-            <p className="text-gray-500 mb-6">
-              ¿Estás seguro de cancelar la sesión{modal.clientName ? ` de ${modal.clientName}` : ''} para el{' '}
-              <span className="font-bold text-gray-900">{DAYS[modal.sessionDay!]} a las {modal.sessionTime}</span>?
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {modal.status === 'pending' && isTrainer ? 'Rechazar Sesión' : 'Cancelar Reserva'}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {modal.status === 'pending' && isTrainer
+                ? `¿Por qué quieres rechazar la sesión de ${modal.clientName}?`
+                : `¿Estás seguro de cancelar la sesión${modal.clientName ? ` de ${modal.clientName}` : ''} para el`
+              }
+              {(!isTrainer || modal.status !== 'pending') && (
+                <span className="font-bold text-gray-900 block mt-1">{DAYS[modal.sessionDay!]} a las {modal.sessionTime}</span>
+              )}
             </p>
+
+            {modal.status === 'pending' && isTrainer && (
+              <textarea
+                placeholder="Escribe el motivo (ej: Horario no disponible, fuera de servicio...)"
+                value={modal.rejectionReason || ''}
+                onChange={(e) => setModal({ ...modal, rejectionReason: e.target.value })}
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm mb-4 focus:ring-2 focus:ring-red-500 focus:outline-none h-24"
+              />
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => isTrainer ? setModal({ ...modal, type: 'trainer-actions' }) : close()}
@@ -200,8 +242,11 @@ const BookingModal: React.FC<BookingModalProps> = ({
               >
                 Volver
               </button>
-              <button onClick={onCancelBooking} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700">
-                Cancelar Sesión
+              <button 
+                onClick={() => (modal.status === 'pending' && isTrainer) ? onUpdateStatus?.('rejected', modal.rejectionReason) : onCancelBooking()} 
+                className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700"
+              >
+                {modal.status === 'pending' && isTrainer ? 'Rechazar' : 'Cancelar Sesión'}
               </button>
             </div>
           </div>

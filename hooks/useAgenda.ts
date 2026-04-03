@@ -10,9 +10,11 @@ import {
   collectionGroup,
   getDoc,
   writeBatch,
+  updateDoc,
 } from 'firebase/firestore';
 import { getPlanLimit } from '../utils/plans';
 import { recalculateGamification } from '../services/gamification';
+import { executeConfirmBooking } from '../services/BookingService';
 import { AppUser } from '../types';
 
 export interface BookedSession {
@@ -23,6 +25,8 @@ export interface BookedSession {
   userId?: string;
   isRecurring?: boolean;
   sessionType?: SessionType;
+  status?: 'pending' | 'confirmed' | 'rejected';
+  rejectionReason?: string;
   createdAt?: any;
 }
 
@@ -79,10 +83,14 @@ export const useAgenda = (user: AppUser | null) => {
   useEffect(() => {
     const q = query(collection(db!, 'bookedSlots'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      const today = new Date().toISOString().split('T')[0];
       const taken: TakenSlots = {};
       snapshot.docs.forEach((d) => {
         const data = d.data();
-        taken[`${data.date}_${data.time}`] = true;
+        // Only mark future slots as "taken" — past ones are cleaned from the grid display
+        if (data.date >= today) {
+          taken[`${data.date}_${data.time}`] = true;
+        }
       });
       setTakenSlots(taken);
     });
@@ -113,7 +121,13 @@ export const useAgenda = (user: AppUser | null) => {
             } catch (_) {}
           }
 
-          allSessions.push({ id: docSnap.id, clientName, userId: uid, ...data } as BookedSession);
+          allSessions.push({
+            id: docSnap.id,
+            clientName,
+            userId: uid,
+            status: 'confirmed', // Default for old data
+            ...data
+          } as BookedSession);
         }
         setBookedSessions(allSessions);
       });
@@ -122,12 +136,46 @@ export const useAgenda = (user: AppUser | null) => {
       const q = query(collection(db!, `agenda/${user.id}/events`));
       const unsubscribe = onSnapshot(q, (snapshot) => {
         setBookedSessions(
-          snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as BookedSession))
+          snapshot.docs.map((d) => ({
+            id: d.id,
+            status: 'confirmed', // Default for old data
+            ...d.data()
+          } as BookedSession))
         );
       });
       return () => unsubscribe();
     }
   }, [user?.id, isTrainer]);
+
+  const updateSessionStatus = async (sessionId: string, status: 'confirmed' | 'rejected', targetUserId?: string, reason?: string) => {
+    const uid = targetUserId || user?.id;
+    if (!uid) return { ok: false, error: 'No user ID' };
+
+    try {
+      const batch = writeBatch(db!);
+      const eventRef = doc(db!, `agenda/${uid}/events`, sessionId);
+      batch.update(eventRef, {
+        status,
+        rejectionReason: reason || null,
+        updatedAt: Timestamp.now(),
+      });
+
+      if (status === 'rejected') {
+        // Find and delete the bookedSlot to free the schedule
+        const session = bookedSessions.find(s => s.id === sessionId);
+        if (session) {
+          const slotId = `${session.date}_${session.time.replace(':', '-')}`;
+          batch.delete(doc(db!, 'bookedSlots', slotId));
+        }
+      }
+
+      await batch.commit();
+      return { ok: true };
+    } catch (e) {
+      console.error('updateSessionStatus failed:', e);
+      return { ok: false, error: 'Error al actualizar estado' };
+    }
+  };
 
   // ── Derived helpers ──
   const getSessionsInWeek = (weekStart: Date): number => {
@@ -136,7 +184,7 @@ export const useAgenda = (user: AppUser | null) => {
     const endOfWeek = new Date(weekStart);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
     const endStr = endOfWeek.toISOString().split('T')[0];
-    return bookedSessions.filter((s) => s.date >= startStr && s.date <= endStr).length;
+    return bookedSessions.filter((s) => s.date >= startStr && s.date <= endStr && s.status !== 'rejected').length;
   };
 
   const getWeeklyLimit = (): number => getPlanLimit(user?.plan);
@@ -145,47 +193,15 @@ export const useAgenda = (user: AppUser | null) => {
 
   const confirmBooking = async (params: ConfirmParams): Promise<BookingResult> => {
     if (!user?.id) return { ok: false, error: 'No user' };
-    const { sessionDay, sessionTime, startOfWeek, isRecurring = false } = params;
-    const weeksToBook = isRecurring ? 4 : 1;
-    let successfulBookings = 0;
-
-    try {
-      for (let i = 0; i < weeksToBook; i++) {
-        const slotDate = new Date(startOfWeek);
-        slotDate.setDate(slotDate.getDate() + sessionDay + i * 7);
-        const dateStr = slotDate.toISOString().split('T')[0];
-        const slotId = `${dateStr}_${sessionTime.replace(':', '-')}`;
-
-        if (i > 0 && takenSlots[slotId]) continue;
-
-        const batch = writeBatch(db!);
-        const eventRef = doc(collection(db!, `agenda/${user.id}/events`));
-        batch.set(eventRef, {
-          date: dateStr,
-          time: sessionTime,
-          createdAt: Timestamp.now(),
-          isRecurring,
-          sessionType: params.sessionType ?? 'Fuerza',
-        });
-        const slotRef = doc(db!, 'bookedSlots', slotId);
-        batch.set(slotRef, {
-          date: dateStr,
-          time: sessionTime,
-          bookedBy: user.id,
-          createdAt: Timestamp.now(),
-        });
-        await batch.commit();
-        successfulBookings++;
-      }
-
-      // Client-side gamification call (complement — CF also triggers server-side)
-      recalculateGamification(user.id).catch(console.error);
-
-      return { ok: true, successfulBookings, totalWeeks: weeksToBook };
-    } catch (e) {
-      console.error('confirmBooking failed:', e);
-      return { ok: false, error: 'Error al agendar la sesión' };
-    }
+    return executeConfirmBooking({
+      userId: user.id,
+      sessionDay: params.sessionDay,
+      sessionTime: params.sessionTime,
+      startOfWeek: params.startOfWeek,
+      isRecurring: params.isRecurring,
+      sessionType: params.sessionType,
+      takenSlots,
+    });
   };
 
   const cancelBooking = async (params: CancelParams): Promise<BookingResult> => {
@@ -252,5 +268,6 @@ export const useAgenda = (user: AppUser | null) => {
     confirmBooking,
     cancelBooking,
     modifyBooking,
+    updateSessionStatus,
   };
 };

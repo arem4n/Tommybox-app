@@ -22,40 +22,61 @@ const AgendaGrid: React.FC<AgendaGridProps> = ({
     const slotDate = new Date(startOfWeek);
     slotDate.setDate(slotDate.getDate() + dayIndex);
     const dateStr = slotDate.toISOString().split('T')[0];
-    const isPast = slotDate < new Date() && slotDate.getDate() !== new Date().getDate();
 
-    const myBooking = !isTrainer && bookedSessions.find((s) => s.date === dateStr && s.time === time);
-    const trainerBooking = isTrainer && bookedSessions.find((s) => s.date === dateStr && s.time === time);
-    const slotKey = `${dateStr}_${time}`;
+    // ── Time-aware slot state ──────────────────────────────────────────────────
+    const now = new Date();
+    const [slotHour, slotMin] = time.split(':').map(Number);
+    const slotDateTime = new Date(slotDate);
+    slotDateTime.setHours(slotHour, slotMin, 0, 0);
+
+    const isPastSession  = slotDateTime < now;                                          // already happened
+    const isTooLate      = !isPastSession && slotDateTime <= new Date(now.getTime() + 60 * 60 * 1000); // < 1h away
+    const isLockedForBooking = isPastSession || isTooLate;                              // can't book
+
+    const myBooking      = !isTrainer && bookedSessions.find((s) => s.date === dateStr && s.time === time);
+    const trainerBooking =  isTrainer && bookedSessions.find((s) => s.date === dateStr && s.time === time);
+    const slotKey        = `${dateStr}_${time}`;
     const isTakenByOther = !isTrainer && !myBooking && takenSlots[slotKey];
 
-    // Session type styling
-    const sType = (myBooking || trainerBooking)
+    // ── Session type styling ───────────────────────────────────────────────────
+    const sType     = (myBooking || trainerBooking)
       ? ((myBooking || trainerBooking) as BookedSession).sessionType as SessionType | undefined
       : undefined;
     const typeStyle = sType ? SESSION_TYPE_CONFIG[sType] : null;
 
-    let cellClass = 'border border-gray-100 p-1 h-14 sm:h-20 transition-all cursor-pointer relative flex flex-col items-center justify-center ';
-    if (isPast) cellClass += 'bg-gray-100 text-gray-300 cursor-not-allowed';
-    else if (myBooking) cellClass += typeStyle ? `${typeStyle.bg} ${typeStyle.border} hover:opacity-90` : 'bg-blue-100 border-blue-300 hover:bg-blue-200';
-    else if (isTakenByOther) cellClass += 'bg-red-50 border-red-200 cursor-not-allowed';
-    else if (trainerBooking) cellClass += typeStyle ? `${typeStyle.bg} ${typeStyle.border} hover:opacity-90` : 'bg-purple-100 border-purple-200 hover:bg-purple-200';
-    else cellClass += 'hover:bg-gray-50 bg-white';
+    // ── Cell class ────────────────────────────────────────────────────────────
+    let cellClass = 'border border-gray-100 p-1 h-14 sm:h-20 transition-all relative flex flex-col items-center justify-center ';
+    if (isPastSession)           cellClass += 'bg-gray-100 text-gray-300 cursor-not-allowed';
+    else if (isTooLate)          cellClass += 'bg-amber-50 border-amber-100 cursor-not-allowed';
+    else if (myBooking)          cellClass += typeStyle ? `${typeStyle.bg} ${typeStyle.border} hover:opacity-90 cursor-pointer` : 'bg-blue-100 border-blue-300 hover:bg-blue-200 cursor-pointer';
+    else if (isTakenByOther)     cellClass += 'bg-red-50 border-red-200 cursor-not-allowed';
+    else if (trainerBooking)     cellClass += typeStyle ? `${typeStyle.bg} ${typeStyle.border} hover:opacity-90 cursor-pointer` : 'bg-purple-100 border-purple-200 hover:bg-purple-200 cursor-pointer';
+    else                         cellClass += 'hover:bg-gray-50 bg-white cursor-pointer';
+
+    // ── Past session: empty gray cell, no indicators ────────────────────────────────
+    // Sessions that already started are shown as clean empty cells so the grid
+    // focuses attention only on upcoming bookings.
+    if (isPastSession) {
+      return (
+        <div
+          key={`${dayIndex}-${time}`}
+          className="border border-gray-100 h-14 sm:h-20 bg-gray-50"
+        />
+      );
+    }
 
     return (
       <div
         key={`${dayIndex}-${time}`}
         className={cellClass}
-        onClick={() => !isPast && !isTakenByOther && onSlotClick(dayIndex, time)}
+        onClick={() => !isLockedForBooking && !isTakenByOther && onSlotClick(dayIndex, time)}
       >
-        {myBooking && (
-          <div className="flex flex-col items-center animate-scale-up">
+        {myBooking && myBooking.status !== 'rejected' && (
+          <div className={`flex flex-col items-center animate-scale-up ${myBooking.status === 'pending' ? 'opacity-70' : ''}`}>
             <span className="text-lg sm:text-xl">🥊</span>
-            {sType && (
-              <span className={`text-[8px] font-black hidden sm:inline px-1 py-0.5 rounded mt-0.5 ${typeStyle?.text}`}>
-                {sType}
-              </span>
-            )}
+            <span className={`text-[8px] font-black px-1 py-0.5 rounded mt-0.5 ${myBooking.status === 'pending' ? 'bg-amber-100 text-amber-700' : (typeStyle?.text || 'text-blue-700')}`}>
+              {myBooking.status === 'pending' ? 'PENDIENTE' : (sType || 'Sesión')}
+            </span>
           </div>
         )}
         {isTakenByOther && (
@@ -64,18 +85,25 @@ const AgendaGrid: React.FC<AgendaGridProps> = ({
             <span className="text-[9px] font-bold text-red-400 hidden sm:inline">Ocupado</span>
           </div>
         )}
-        {trainerBooking && (
-          <div className="flex flex-col items-center animate-scale-up w-full overflow-hidden px-1">
-            <Users className={typeStyle ? typeStyle.text : 'text-purple-600'} size={14} />
-            <span className={`text-[8px] sm:text-[9px] font-bold truncate w-full text-center mt-0.5 ${typeStyle?.text ?? 'text-purple-700'}`}>
-              {(trainerBooking as BookedSession).clientName}
+        {trainerBooking && trainerBooking.status !== 'rejected' && (
+          <div className={`flex flex-col items-center animate-scale-up w-full overflow-hidden px-1 ${trainerBooking.status === 'pending' ? 'opacity-80' : ''}`}>
+            <Users className={trainerBooking.status === 'pending' ? 'text-amber-500' : (typeStyle ? typeStyle.text : 'text-purple-600')} size={14} />
+            <span className={`text-[8px] sm:text-[9px] font-bold truncate w-full text-center mt-0.5 ${trainerBooking.status === 'pending' ? 'text-amber-700' : (typeStyle?.text ?? 'text-purple-700')}`}>
+              {trainerBooking.status === 'pending' ? '📋 PENDIENTE' : (trainerBooking as BookedSession).clientName}
             </span>
-            {sType && (
+            {sType && trainerBooking.status !== 'pending' && (
               <span className={`text-[7px] font-black hidden sm:inline ${typeStyle?.text}`}>{sType}</span>
             )}
           </div>
         )}
-        {!myBooking && !trainerBooking && !isTakenByOther && !isPast && (
+        {/* 'Too late' indicator — only on free available slots */}
+        {isTooLate && !myBooking && !trainerBooking && !isTakenByOther && (
+          <span className="text-[9px] font-bold text-amber-400 hidden sm:inline text-center leading-tight">
+            Cierra<br/>en breve
+          </span>
+        )}
+        {/* Available dot */}
+        {!myBooking && !trainerBooking && !isTakenByOther && !isLockedForBooking && (
           <div className="opacity-0 hover:opacity-100 transition-opacity">
             <div className="w-2 h-2 bg-blue-400 rounded-full" />
           </div>

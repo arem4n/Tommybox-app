@@ -33,14 +33,20 @@ const DEFAULT_PLANS = [
   },
 ];
 
-const renderIcon = (iconName: string, isCurrent: boolean, featured: boolean) => {
+const renderIcon = (plan: any, isCurrent: boolean, featured: boolean) => {
   let imgSrc = '/custom-icons/plan_esencial.png';
-  if (iconName === 'Zap') imgSrc = '/custom-icons/plan_avanzado.png';
-  if (iconName === 'Award') imgSrc = '/custom-icons/plan_elite.png';
+  if (plan.icon === 'Zap') imgSrc = '/custom-icons/plan_avanzado.png';
+  if (plan.icon === 'Award') imgSrc = '/custom-icons/plan_elite.png';
+  // Custom uploaded image takes priority
+  if (plan.imageUrl) imgSrc = plan.imageUrl;
 
   return (
     <div className={`w-full h-48 rounded-2xl flex items-center justify-center mb-6 lg:mb-8 bg-slate-900 border border-slate-800 overflow-hidden`}>
-      <img src={imgSrc} alt="Plan icon" className={`w-full h-full object-contain mix-blend-screen ${isCurrent ? 'opacity-50' : 'opacity-100'}`} />
+      <img
+        src={imgSrc}
+        alt="Plan icon"
+        className={`w-full h-full ${plan.imageUrl ? 'object-cover' : 'object-contain mix-blend-screen'} ${isCurrent ? 'opacity-50' : 'opacity-100'}`}
+      />
     </div>
   );
 };
@@ -97,6 +103,16 @@ const PlansSection = ({ user }: { user: any }) => {
 
   const plansToRender = plans.length > 0 ? plans : DEFAULT_PLANS;
 
+  // ── GA4: plan_viewed — fires once when plans are visible ──────────────────
+  useEffect(() => {
+    if (plansToRender.length === 0) return;
+    if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+      plansToRender.forEach((plan) => {
+        (window as any).gtag('event', 'plan_viewed', { plan_id: plan.id });
+      });
+    }
+  }, [plansToRender.length]);
+
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 animate-fade-in relative">
       <div className="text-center max-w-2xl mx-auto mb-16 lg:mb-32">
@@ -144,7 +160,7 @@ const PlansSection = ({ user }: { user: any }) => {
                 <div className={isCurrent ? 'relative bg-slate-900 rounded-[calc(2rem-4px)] p-8 flex flex-col flex-1 h-full z-10 border border-slate-800' : 'flex flex-col flex-1 h-full'}>
 
               <div className="flex-1">
-                {renderIcon(plan.icon, isCurrent, isFeatured)}
+                {renderIcon(plan, isCurrent, isFeatured)}
 
                 <h3 className="text-2xl lg:text-3xl lg:text-4xl font-black text-white mb-2">{plan.name}</h3>
                 <p className="text-slate-400 mb-6 lg:mb-8 min-h-[48px]">{plan.description}</p>

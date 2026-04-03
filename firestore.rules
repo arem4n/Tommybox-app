@@ -55,6 +55,12 @@ service cloud.firestore {
         allow create, update: if isOwner(userId) || isTrainer();
         allow delete: if isTrainer();
       }
+
+      // Profile photo — stored separately to keep main user doc lightweight
+      match /photo/{docId} {
+        allow read: if isOwner(userId) || isTrainer();
+        allow write: if isOwner(userId);
+      }
     }
 
     match /agenda/{userId}/events/{eventId} {

@@ -144,6 +144,8 @@ export interface UserProfile {
     weight?: number;
     height?: number;
     build?: string;
+    /** Fecha de la primera sesión confirmada — base para cohort analysis */
+    firstSessionDate?: Timestamp;
 }
 
 export interface DailyActionTracker {

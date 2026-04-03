@@ -9,33 +9,35 @@ import ClientProfileView from './ClientProfileView';
 import TrainerLibraryManager from './TrainerLibraryManager';
 import AttendanceView from './AttendanceView';
 import TrainerPlansManager from './TrainerPlansManager';
+import TrainerAnalyticsDashboard from './TrainerAnalyticsDashboard';
+import TrainerProfileView from './TrainerProfileView';
 import { getPlanName } from '../../utils/plans';
 import { useModal } from "../../contexts/ModalContext";
 
 type PrimaryTab = 'clients' | 'agenda' | 'asistencia';
-type SecondaryTab = 'planes' | 'payments' | 'biblioteca' | 'community';
+type SecondaryTab = 'planes' | 'payments' | 'biblioteca' | 'community' | 'analytics' | 'perfil';
 type CurrentTab = PrimaryTab | SecondaryTab;
 
 const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => void }) => {
   const { showAlert, showConfirm } = useModal();
   const [currentTab, setCurrentTab] = useState<CurrentTab>('clients');
-  const [clients, setClients] = useState<any[]>([]);
-  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+  const [clients, setClients] = useState<AppUser[]>([]);
+  const [selectedClient, setSelectedClient] = useState<AppUser | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [hasPlans, setHasPlans] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setClients(allUsers.filter(u => !(u as any).isTrainer));
+      const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppUser));
+      setClients(allUsers.filter(u => !u.isTrainer));
     });
     return () => unsubscribe();
   }, []);
 
   // Check if trainer has configured plans
   useEffect(() => {
-    const q = query(collection(db, 'trainerPlans'));
+    const q = query(collection(db, 'plans'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setHasPlans(snapshot.docs.length > 0);
     });
@@ -47,7 +49,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
   const pendingPayments = clients.filter(c => c.paymentStatus === 'pending_verification');
 
   // Onboarding steps
-  const profileComplete = !!(user?.displayName && user?.photoURL);
+  const profileComplete = !!(user?.displayName);
   const plansConfigured = hasPlans;
   const hasInvitedClient = activeClients.length > 0;
   const onboardingDone = profileComplete && plansConfigured && hasInvitedClient;
@@ -92,6 +94,8 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
     { id: 'payments',   label: 'Pagos',       imgSrc: '/custom-icons/nav_payments.png', badge: pendingPayments.length },
     { id: 'biblioteca', label: 'Biblioteca',  imgSrc: '/custom-icons/nav_library.png' },
     { id: 'community',  label: 'Comunidad',   imgSrc: '/custom-icons/nav_community.png' },
+    { id: 'analytics',  label: 'Analytics',   imgSrc: '/custom-icons/nav_achievements.png' },
+    { id: 'perfil',     label: 'Mi Perfil',   imgSrc: '/custom-icons/nav_clients.png' },
   ];
 
   const isPrimary = primaryTabs.some(t => t.id === currentTab);
@@ -184,7 +188,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
 
               {/* Step 1 */}
               <button
-                onClick={() => {/* navigate to profile */}}
+                onClick={() => setCurrentTab('perfil')}
                 className={`flex items-center gap-3 flex-1 rounded-xl px-4 py-3 transition-all ${
                   profileComplete
                     ? 'bg-white/20 opacity-60'
@@ -256,6 +260,8 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
         {currentTab === 'biblioteca'  && <TrainerLibraryManager user={user} />}
         {currentTab === 'asistencia'  && <AttendanceView user={user} />}
         {currentTab === 'planes'      && <TrainerPlansManager user={user} />}
+        {currentTab === 'analytics'   && <TrainerAnalyticsDashboard clients={clients} />}
+        {currentTab === 'perfil'      && <TrainerProfileView user={user} />}
 
         {/* ── Payments ── */}
         {currentTab === 'payments' && (

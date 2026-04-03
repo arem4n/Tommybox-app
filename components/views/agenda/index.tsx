@@ -5,6 +5,7 @@ import { getPlanLimit } from '../../../utils/plans';
 import AgendaHeader from './AgendaHeader';
 import AgendaGrid from './AgendaGrid';
 import BookingModal, { ModalState, INITIAL_MODAL } from './BookingModal';
+import AgendaNotices from './AgendaNotices';
 import { AppUser } from '../../../types';
 
 // ── Week helpers ──────────────────────────────────────────────────────────────
@@ -27,8 +28,10 @@ interface AgendaSectionProps {
  */
 const AgendaSection: React.FC<AgendaSectionProps> = ({ user }) => {
   const { showAlert } = useModal();
-  const { bookedSessions, takenSlots, getSessionsInWeek, confirmBooking, cancelBooking, modifyBooking } =
-    useAgenda(user);
+  const { 
+    bookedSessions, takenSlots, getSessionsInWeek, confirmBooking, 
+    cancelBooking, modifyBooking, updateSessionStatus 
+  } = useAgenda(user);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modal, setModal] = useState<ModalState>(INITIAL_MODAL);
@@ -73,14 +76,27 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({ user }) => {
           existingSessionId: existingSession.id,
           clientName: existingSession.clientName,
           userId: existingSession.userId,
+          status: existingSession.status,
+          rejectionReason: existingSession.rejectionReason,
           newTime: time,
+          sessionType: existingSession.sessionType,
         });
       }
       return;
     }
 
     if (existingSession) {
-      setModal({ type: 'cancel', sessionTime: time, sessionDay: dayIndex, existingSessionId: existingSession.id });
+      if (existingSession.status === 'rejected') {
+        showAlert('Esta sesión fue rechazada. El aviso detallado aparecerá arriba de tu agenda.');
+        return;
+      }
+      setModal({ 
+        type: 'cancel', 
+        sessionTime: time, 
+        sessionDay: dayIndex, 
+        existingSessionId: existingSession.id,
+        status: existingSession.status
+      });
       return;
     }
 
@@ -118,6 +134,11 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({ user }) => {
     });
 
     if (result.ok) {
+      // ── GA4: booking completed ──────────────────────────────────────────────
+      if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+        (window as any).gtag('event', 'booking_completed', { method: 'calendar' });
+      }
+
       let msg = modal.isRecurring
         ? `Se han agendado ${result.successfulBookings} sesiones exitosamente del mes.`
         : 'Tu sesión ha sido agendada correctamente.';
@@ -166,6 +187,16 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({ user }) => {
     }
   };
 
+  const handleUpdateStatus = async (status: 'confirmed' | 'rejected', reason?: string) => {
+    if (!modal.existingSessionId) return;
+    const result = await updateSessionStatus(modal.existingSessionId, status, modal.userId, reason);
+    if (result.ok) {
+      setModal(INITIAL_MODAL);
+    } else {
+      showAlert(result.error ?? 'Error al actualizar estado');
+    }
+  };
+
   return (
     <section className="container mx-auto max-w-5xl">
       <AgendaHeader
@@ -175,6 +206,10 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({ user }) => {
         onWeekChange={changeWeek}
         isEligibleForEvaluation={isEligibleForEvaluation}
       />
+
+      {!isTrainer && (
+        <AgendaNotices sessions={bookedSessions} userId={user.id} />
+      )}
 
       <AgendaGrid
         startOfWeek={startOfWeek}
@@ -193,6 +228,7 @@ const AgendaSection: React.FC<AgendaSectionProps> = ({ user }) => {
         onConfirmBooking={handleConfirmBooking}
         onCancelBooking={handleCancelBooking}
         onModifyBooking={handleModifyBooking}
+        onUpdateStatus={handleUpdateStatus}
       />
     </section>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../../services/firebase';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, addDoc, deleteDoc, Timestamp, getDoc, setDoc } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { Calendar, Dumbbell, Zap, Star, Camera, AlertTriangle, Plus, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import { getPlanName } from '../../utils/plans';
@@ -39,6 +39,7 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
   // Profile Editor State
   const [editName, setEditName] = useState(user?.displayName || '');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
+  const [photoLoading, setPhotoLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [weightLogs, setWeightLogs] = useState<any[]>([]);
@@ -62,6 +63,19 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
     ? ['Estadísticas', 'Rendimiento', 'Restricciones']
     : ['Estadísticas', 'Rendimiento', 'Perfil'];
   const [activeTab, setActiveTab] = useState<Tab>('Estadísticas');
+
+  // ── Load photo from subcollection (lightweight — not in main user doc) ──────
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    getDoc(doc(db!, `users/${user.id}/photo/main`)).then((snap) => {
+      if (!cancelled && snap.exists()) {
+        setPhotoURL(snap.data().photoURL || '');
+      }
+      if (!cancelled) setPhotoLoading(false);
+    }).catch(() => setPhotoLoading(false));
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // ── Firestore subscriptions ──────────────────────────────────────────────────
   useEffect(() => {
@@ -172,13 +186,23 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
     setSaving(true);
     try {
       const newWeight = weight ? parseFloat(weight.toString()) : null;
+
+      // ── Main user doc — no photoURL here (lives in subcollection) ────────────
       await updateDoc(doc(db!, 'users', user.id), {
         displayName: editName.trim(),
-        photoURL: photoURL.trim() || null,
         weight: newWeight,
         height: height ? parseFloat(height.toString()) : null,
         build: build.trim() || null,
       });
+
+      // ── Photo — separate subcollection to keep user doc lightweight ──────────
+      if (photoURL.trim()) {
+        await setDoc(doc(db!, `users/${user.id}/photo/main`), {
+          photoURL: photoURL.trim(),
+          updatedAt: Timestamp.now(),
+        });
+      }
+
       if (newWeight !== null && newWeight !== user.weight) {
         await addDoc(collection(db!, `users/${user.id}/weightLogs`), {
           weight: newWeight, date: new Date().toISOString().split('T')[0], timestamp: Timestamp.now(),
@@ -561,7 +585,9 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
           <h2 className="text-2xl font-black text-white mb-8 text-center">Editar Perfil</h2>
           <div className="flex flex-col items-center mb-8">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center mb-4 border-4 border-slate-900 shadow-lg relative group">
-              {photoURL ? (
+              {photoLoading ? (
+                <div className="w-6 h-6 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
+              ) : photoURL ? (
                 <img src={photoURL} alt="avatar" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-4xl font-black text-slate-300">{editName?.[0]?.toUpperCase() || '?'}</span>
