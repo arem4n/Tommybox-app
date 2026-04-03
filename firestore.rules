@@ -20,7 +20,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, list: if isOwner(userId) || isTrainer();
       allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isAuthenticated() && (isOwner(userId) || isTrainer());
+      allow update: if isTrainer() ||
+        (isOwner(userId) && !request.resource.data.diff(resource.data)
+          .affectedKeys().hasAny(['isTrainer', 'plan', 'gamification']));
       allow delete: if isTrainer();
 
       match /metrics/{metricId} {
