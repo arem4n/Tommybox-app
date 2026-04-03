@@ -46,6 +46,16 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
     return () => unsubscribe();
   }, []);
 
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobileMenuOpen]);
+
   const activeClients = clients.filter(c => c.status !== 'archived');
   const archivedClients = clients.filter(c => c.status === 'archived');
   const pendingPayments = clients.filter(c => c.paymentStatus === 'pending_verification');
@@ -164,7 +174,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                       : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
                   }`}
                 >
-                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 opacity-90" />
+                  <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 md:w-7 md:h-7 opacity-90" />
                   <span>{tab.label}</span>
                 </button>
               ))}
@@ -189,7 +199,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                       : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
                   }`}
                 >
-                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 opacity-70" />
+                  <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 md:w-6 md:h-6 opacity-70" />
                   <span>{tab.label}</span>
                   {(tab as any).badge > 0 && (
                     <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center leading-none">
@@ -230,7 +240,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                   : 'text-slate-300 hover:bg-slate-900 hover:text-white border-l-4 border-transparent'
               }`}
             >
-              <img src={tab.imgSrc} alt={tab.label} className="w-6 h-6 opacity-90" />
+              <img src={tab.imgSrc} alt={tab.label} className="w-7 h-7 opacity-90" />
               <span className="font-bold text-sm">{tab.label}</span>
             </button>
           ))}
@@ -253,7 +263,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
                   : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border-l-4 border-transparent'
               }`}
             >
-              <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 opacity-70" />
+              <img src={tab.imgSrc} alt={tab.label} className="w-5 h-5 md:w-6 md:h-6 opacity-70" />
               <span className="font-bold text-sm">{tab.label}</span>
               {(tab as any).badge > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center leading-none">
@@ -339,7 +349,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
       )}
 
       {/* ── Main ── */}
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in">
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-fade-in" key={currentTab}>
 
         {currentTab === 'agenda'      && <AgendaSection user={user} />}
         {currentTab === 'community'   && <CommunitySection user={user} />}
