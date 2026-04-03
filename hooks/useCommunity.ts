@@ -135,6 +135,21 @@ export const useCommunity = (user: AppUser | null) => {
     }
   };
 
+  const editPost = async (postId: string, newText: string): Promise<PostResult> => {
+    if (!user?.id || !db) return { ok: false, error: 'Sin conexión' };
+    if (!newText.trim()) return { ok: false, error: 'Texto vacío' };
+    try {
+      await updateDoc(doc(db, 'community', postId), {
+        text: newText.trim(),
+        edited: true,
+      });
+      return { ok: true };
+    } catch (e) {
+      console.error('editPost failed:', e);
+      return { ok: false, error: 'Error al editar' };
+    }
+  };
+
   return {
     posts,
     submitPost,

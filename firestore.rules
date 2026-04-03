@@ -75,7 +75,7 @@ service cloud.firestore {
     }
 
     match /bookedSlots/{slotId} {
-      allow read: if isAuthenticated();
+      allow read: if isTrainer() || (isAuthenticated() && resource.data.bookedBy == request.auth.uid);
       allow create: if isAuthenticated() && request.resource.data.bookedBy == request.auth.uid;
       allow delete: if isAuthenticated() && (resource.data.bookedBy == request.auth.uid || isTrainer());
       allow update: if isTrainer();
@@ -84,11 +84,11 @@ service cloud.firestore {
     match /community/{postId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isAuthenticated() && (
-        resource.data.authorId == request.auth.uid ||
-        isTrainer() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
-      );
+      allow update: if isTrainer() ||
+        (isAuthenticated() && resource.data.authorId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited'])) ||
+        (isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
       allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isTrainer());
     }
 
@@ -108,7 +108,10 @@ service cloud.firestore {
     // Gamification: pending achievements queue (trainer reviews)
     match /pendingAchievements/{docId} {
       allow read, delete: if isTrainer();
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['userId', 'type', 'createdAt']) &&
+        request.resource.data.keys().hasOnly(['userId', 'type', 'description', 'createdAt']);
     }
 
     // Gamification: approved public achievements feed
