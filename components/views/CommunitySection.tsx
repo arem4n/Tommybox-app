@@ -6,13 +6,14 @@ import { AppUser } from '../../types';
 
 const CommunitySection = ({ user }: { user: AppUser }) => {
   const { showConfirm } = useModal();
-  const { posts, submitPost, toggleLike, deletePost, addComment, deleteComment } = useCommunity(user);
+  const { posts, submitPost, toggleLike, deletePost, editPost, addComment, deleteComment } = useCommunity(user);
 
   const [newPostContent, setNewPostContent] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [activeCommentPost, setActiveCommentPost] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [editingState, setEditingState] = useState<{ id: string; text: string } | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
