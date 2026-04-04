@@ -88,18 +88,31 @@ const PlansSection = ({ user }: { user: any }) => {
     }
   };
 
+
   const handleTransferPayment = async () => {
     if (!user?.id || !selectedPlanForPayment) return;
     try {
       await updateDoc(doc(db, 'users', user.id), {
-        plan: selectedPlanForPayment.id,
+        pendingPlan: selectedPlanForPayment.id,
+        pendingPlanName: selectedPlanForPayment.name,
+        pendingPlanPrice: selectedPlanForPayment.price,
+        pendingPlanRequestedAt: Timestamp.now(),
         paymentStatus: 'pending_verification'
       });
+
+      const phone = import.meta.env.VITE_TRAINER_PHONE || '';
+      const message = encodeURIComponent(
+        `Hola! Quiero solicitar el plan ${selectedPlanForPayment.name} (${selectedPlanForPayment.price.toLocaleString('es-CL')} CLP). Mi nombre: ${user.displayName}. Por favor confirma cuando esté activo. ¡Gracias!`
+      );
+      if(phone) window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+
+      alert('Tu solicitud fue enviada. El entrenador activará tu plan una vez confirmado el pago.');
       setSelectedPlanForPayment(null);
     } catch (error) {
       console.error("Error updating plan status: ", error);
     }
   };
+
 
   const plansToRender = plans.length > 0 ? plans : DEFAULT_PLANS;
 

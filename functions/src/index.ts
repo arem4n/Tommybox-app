@@ -43,3 +43,18 @@ export const onAgendaEvent = onDocumentWritten(
     }
   }
 );
+
+export const onFeelingWritten = onDocumentWritten(
+  'users/{userId}/feelings/{feelingId}',
+  async (event) => {
+    const { userId } = event.params;
+    if (!event.data?.after?.exists) return;
+    const db = getFirestore();
+    try {
+      await recalculateGamificationServer(db, userId);
+      console.log(`[onFeelingWritten] Gamification recalculated for user ${userId}`);
+    } catch (error) {
+      console.error(`[onFeelingWritten] Failed for user ${userId}:`, error);
+    }
+  }
+);
