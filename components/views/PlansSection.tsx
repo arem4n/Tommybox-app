@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../../services/firebase';
-import { collection, query, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { Dumbbell, Zap, Award, CreditCard, Building2, X } from 'lucide-react';
 
 const DEFAULT_PLANS = [
@@ -227,8 +228,8 @@ const PlansSection = ({ user }: { user: any }) => {
       </div>
 
       {/* Plan Change Warning Modal */}
-      {showPlanChangeWarning && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 overflow-y-auto animate-fade-in">
+      {showPlanChangeWarning && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] overflow-y-auto animate-fade-in">
           <div className="flex min-h-full items-start justify-center p-4 lg:p-8">
             <div className="my-auto bg-white rounded-3xl max-w-md w-full relative shadow-2xl p-6 lg:p-8 text-center border border-gray-100">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
@@ -278,12 +279,13 @@ const PlansSection = ({ user }: { user: any }) => {
             </div>
           </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Payment Modal */}
-      {selectedPlanForPayment && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 overflow-y-auto">
+      {selectedPlanForPayment && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] overflow-y-auto">
           <div className="flex min-h-full items-start justify-center p-4 lg:p-8">
             <div className="my-auto bg-white rounded-3xl max-w-lg lg:max-w-4xl w-full relative shadow-2xl flex flex-col border border-gray-100">
             <div className="absolute top-4 right-4 z-10">
@@ -349,7 +351,8 @@ const PlansSection = ({ user }: { user: any }) => {
             </div>
           </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
