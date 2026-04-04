@@ -55,24 +55,9 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
   } = useGamification(user);
 
   const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
-  const [selectedFeeling, setSelectedFeeling] = useState('');
-  const [comment, setComment] = useState('');
-  const [recoveryNotes, setRecoveryNotes] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
-  const handleRegisterFeeling = async () => {
-    if (!selectedFeeling) return;
-    const result = await registerFeeling({ feeling: selectedFeeling, comment, recoveryNotes });
-    if (result.ok) {
-      const xp = result.xpGained ?? 5;
-      const bonus = xp > 5;
-      setSuccessMessage(bonus ? `+${xp} XP ⚡ ¡Bonus de esfuerzo!` : `+${xp} XP 💪`);
-      setTimeout(() => setSuccessMessage(''), 3500);
-      setSelectedFeeling('');
-      setComment('');
-      setRecoveryNotes('');
-    }
-  };
+
+
 
 
   const totalPoints = gamification?.totalPoints || 0;

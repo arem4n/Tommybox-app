@@ -139,7 +139,7 @@ export const useGamification = (user: AppUser | null) => {
       });
       await incrementActionCount(user.id, 'POST_WORKOUT_SENSATION');
       // Client-side gamification call (complement — CF also triggers)
-      await recalculateGamification(user.id);
+      // await recalculateGamification(user.id); // Removed: handled by Cloud Function
       setCanRegisterFeeling(false);
       return { ok: true, xpGained };
     } catch (e) {
