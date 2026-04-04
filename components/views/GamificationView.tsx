@@ -48,10 +48,8 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
   const {
     gamification,
     monthSessions,
-
     newlyUnlockedBadge,
     dismissBadge,
-    registerFeeling,
   } = useGamification(user);
 
   const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
