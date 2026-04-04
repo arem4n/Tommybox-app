@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -14,8 +15,8 @@ interface ModalProps {
 const Modal: React.FC<ModalProps> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Aceptar', cancelText = 'Cancelar', type = 'info' }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 animate-fade-in">
       <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-scale-up">
         <h3 className={`text-lg font-bold mb-2 ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : type === 'warning' ? 'text-yellow-600' : 'text-blue-600'}`}>
           {title}
@@ -34,7 +35,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, title, message, onConfirm, onCanc
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

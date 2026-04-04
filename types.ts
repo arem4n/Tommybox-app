@@ -146,6 +146,11 @@ export interface UserProfile {
     build?: string;
     /** Fecha de la primera sesión confirmada — base para cohort analysis */
     firstSessionDate?: Timestamp;
+    /** Pending plan upgrade fields — set when client requests a plan */
+    pendingPlan?: string;
+    pendingPlanName?: string;
+    pendingPlanPrice?: number;
+    pendingPlanRequestedAt?: Timestamp;
 }
 
 export interface DailyActionTracker {

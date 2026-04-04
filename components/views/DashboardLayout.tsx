@@ -1,17 +1,19 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AppUser } from '../../types';
+import ClientStatsView from './ClientStatsView';
+import { Calendar, MessageCircle, CreditCard, User, LogOut, Trophy, Loader2, BookOpen } from 'lucide-react';
+import WelcomeFeelingModal from './WelcomeFeelingModal';
+import { signOut } from '../../lib/auth';
+import { db } from '../../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 const AgendaSection = lazy(() => import('./AgendaSection'));
 const CommunitySection = lazy(() => import('./CommunitySection'));
 const PlansSection = lazy(() => import('./PlansSection'));
 const LibrarySection = lazy(() => import('./LibrarySection'));
-import ClientStatsView from './ClientStatsView';
 const TrainerDashboard = lazy(() => import('./TrainerDashboard'));
-import { Calendar, MessageCircle, CreditCard, User, LogOut, Trophy, Loader2, BookOpen } from 'lucide-react';
 const GamificationView = lazy(() => import('./GamificationView'));
-import { signOut } from '../../lib/auth';
-import { db } from '../../services/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
 const LoadingSpinner = () => (
     <div className="flex h-screen w-full items-center justify-center">
@@ -71,6 +73,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) 
 
   return (
     <Suspense fallback={<LoadingSpinner />}><div className="min-h-screen bg-gray-50 flex flex-col">
+      <WelcomeFeelingModal user={user} />
       <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-10 shadow-lg shadow-black/20">
         {/* Row 1 */}
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">

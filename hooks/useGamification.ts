@@ -12,7 +12,6 @@ import {
 import {
   canPerformAction,
   incrementActionCount,
-  recalculateGamification,
 } from '../services/gamification';
 import { GamificationProfile } from '../types';
 import { AppUser } from '../types';

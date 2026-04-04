@@ -1,4 +1,3 @@
-import { useModal } from '../../contexts/ModalContext';
 import React, { useState } from 'react';
 import { Flame, CheckCircle, Lock } from 'lucide-react';
 import {
@@ -13,13 +12,6 @@ interface GamificationViewProps {
   user: AppUser;
 }
 
-const FEELINGS_OPTIONS = [
-  { label: 'Excelente 🔥', value: 'Excelente' },
-  { label: 'Bien 💪', value: 'Bien' },
-  { label: 'Normal 😐', value: 'Normal' },
-  { label: 'Cansado 😓', value: 'Cansado' },
-  { label: 'Muy duro 😤', value: 'Muy duro' },
-];
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'text-gray-500 border-gray-300 bg-gray-50',
@@ -44,7 +36,6 @@ const MONTHLY_CHALLENGE = {
 };
 
 const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
-  const { showAchievement } = useModal();
   const {
     gamification,
     monthSessions,
@@ -53,10 +44,6 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
   } = useGamification(user);
 
   const [activeTab, setActiveTab] = useState<'logros' | 'badges'>('logros');
-
-
-
-
 
   const totalPoints = gamification?.totalPoints || 0;
   const { level, progress, currentXpInLevel, xpForNextLevel } = calculateLevelInfo(totalPoints);

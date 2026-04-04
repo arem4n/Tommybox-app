@@ -1,8 +1,9 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Lock, Calendar, Check, Users, Edit2, Clock } from 'lucide-react';
 import { BookedSession, TakenSlots } from '../../../hooks/useAgenda';
 import { SessionType, SESSION_TYPE_CONFIG } from '../../../types';
-import { DAYS, TIMES } from './AgendaGrid';
+import { DAYS, TIMES, INITIAL_MODAL } from './constants';
 import { getGoogleCalendarUrl, getIcsDataUri } from './CalendarExport';
 
 export interface ModalState {
@@ -20,7 +21,9 @@ export interface ModalState {
   sessionType?: SessionType;
 }
 
-export const INITIAL_MODAL: ModalState = { type: 'none', sessionTime: '', sessionDay: null };
+// INITIAL_MODAL has moved to ./constants.ts to keep this file HMR-compatible.
+// Re-export it from there so existing imports of BookingModal keep working.
+export { INITIAL_MODAL };
 
 const SESSION_TYPES = Object.keys(SESSION_TYPE_CONFIG) as SessionType[];
 
@@ -54,8 +57,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
   const currentType = modal.sessionType ?? 'Fuerza';
   const typeStyle = SESSION_TYPE_CONFIG[currentType];
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fade-in">
       <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative">
         <button onClick={close} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
           <X size={20} />
@@ -286,7 +289,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
