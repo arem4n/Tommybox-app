@@ -24,8 +24,8 @@ const AgendaHeader: React.FC<AgendaHeaderProps> = ({
     <div className="mb-6">
       <div className="flex flex-col md:flex-row justify-between items-center mb-4 bg-white p-4 lg:p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="mb-4 md:mb-0">
-          <h2 className="text-2xl lg:text-3xl font-black text-gray-900 flex items-center gap-2">
-            <Calendar className="text-blue-600" /> Agenda Semanal
+          <h2 className="text-2xl lg:text-3xl font-black text-gray-900 flex items-center gap-3">
+            <img src="/custom-icons/nav_calendar.png" className="w-8 h-8 lg:w-9 lg:h-9 object-contain drop-shadow-sm" alt="Agenda" /> Agenda Semanal
           </h2>
           <p className="text-gray-500 text-sm">
             {isTrainer ? 'Gestiona las sesiones de todos los atletas' : 'Reserva tus horas de entrenamiento'}

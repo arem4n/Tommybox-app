@@ -10,6 +10,8 @@ const TrainerDashboard = lazy(() => import('./TrainerDashboard'));
 import { Calendar, MessageCircle, CreditCard, User, LogOut, Trophy, Loader2, BookOpen } from 'lucide-react';
 const GamificationView = lazy(() => import('./GamificationView'));
 import { signOut } from '../../lib/auth';
+import { db } from '../../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const LoadingSpinner = () => (
     <div className="flex h-screen w-full items-center justify-center">
@@ -33,6 +35,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) 
           setSearchParams({ tab: 'agenda' }, { replace: true });
       }
   }, [searchParams, setSearchParams, user]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    getDoc(doc(db!, `users/${user.id}/photo/main`)).then((snap) => {
+      if (!cancelled && snap.exists() && snap.data().photoURL) {
+        setUser(prev => ({ ...prev, photoURL: snap.data().photoURL }));
+      }
+    }).catch(console.error);
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const handleLogout = async () => {
     try {
@@ -70,9 +83,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user: initialUser }) 
               {user?.displayName}
             </span>
             {user?.photoURL ? (
-                <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full object-cover border-2 border-blue-100" />
+                <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full object-cover border-2 border-slate-700" />
             ) : (
-                <div className="w-8 h-8 rounded-full bg-slate-800 text-blue-400 flex items-center justify-center font-bold text-sm hidden sm:flex">
+                <div className="w-8 h-8 rounded-full bg-slate-800 text-blue-400 flex items-center justify-center font-bold text-sm">
                     {user?.displayName?.[0]?.toUpperCase() || '?'}
                 </div>
             )}

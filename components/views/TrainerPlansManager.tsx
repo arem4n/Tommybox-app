@@ -320,7 +320,7 @@ const TrainerPlansManager = ({ user }: { user: any }) => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-              <DollarSign size={22} className="text-blue-600" /> Gestión de Planes
+              <img src="/custom-icons/gestion_de_planes.png" className="w-7 h-7 object-contain" alt="Gestión de planes" /> Gestión de Planes
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               Los cambios se reflejan en tiempo real para todos los clientes.

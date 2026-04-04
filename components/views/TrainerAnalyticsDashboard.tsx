@@ -29,21 +29,21 @@ const monthKey = (date: Date): string =>
 // ── Sub-components ──────────────────────────────────────────────────────────────
 
 const StatCard = ({
-  icon: Icon,
+  iconSrc,
   label,
   value,
   sub,
   color,
 }: {
-  icon: React.ElementType;
+  iconSrc: string;
   label: string;
   value: string | number;
   sub?: string;
   color: string;
 }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-      <Icon size={22} className="text-white" />
+  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 flex items-center gap-4">
+    <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center flex-shrink-0 ${color}`}>
+      <img src={iconSrc} alt={label} className="w-10 h-10 sm:w-14 sm:h-14 object-contain drop-shadow-sm" />
     </div>
     <div>
       <p className="text-2xl font-black text-gray-900">{value}</p>
@@ -324,10 +324,10 @@ const TrainerAnalyticsDashboard = ({ clients }: { clients: AppUser[] }) => {
     <div className="space-y-6 animate-fade-in">
       {/* KPI summary row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Clientes activos" value={activeClients.length} color="bg-blue-500" />
-        <StatCard icon={BarChart2} label="Con plan activo" value={withPlan.length} sub={`${activeClients.length > 0 ? Math.round((withPlan.length / activeClients.length) * 100) : 0}% del total`} color="bg-purple-500" />
-        <StatCard icon={Calendar} label="Sesiones totales" value={sessions.length} sub={`${sessions.filter((s) => s.attended).length} confirmadas`} color="bg-green-500" />
-        <StatCard icon={TrendingUp} label="Con seguimiento completo" value={withFirstSession.length} sub="rastreados desde su 1ª sesión" color="bg-orange-500" />
+        <StatCard iconSrc="/custom-icons/cliente_activo.png" label="Clientes activos" value={activeClients.length} color="bg-blue-50/50" />
+        <StatCard iconSrc="/custom-icons/plan_activo.png" label="Con plan activo" value={withPlan.length} sub={`${activeClients.length > 0 ? Math.round((withPlan.length / activeClients.length) * 100) : 0}% del total`} color="bg-blue-50/50" />
+        <StatCard iconSrc="/custom-icons/sesiones_totales.png" label="Sesiones totales" value={sessions.length} sub={`${sessions.filter((s) => s.attended).length} confirmadas`} color="bg-slate-50/50" />
+        <StatCard iconSrc="/custom-icons/seguimiento_primera_sesion.png" label="Con seguimiento completo" value={withFirstSession.length} sub="rastreados desde su 1ª sesión" color="bg-slate-50/50" />
       </div>
 
       {/* Charts */}

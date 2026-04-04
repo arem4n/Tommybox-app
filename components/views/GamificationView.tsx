@@ -204,7 +204,7 @@ const GamificationView: React.FC<GamificationViewProps> = ({ user }) => {
             <span className="text-xs font-black uppercase tracking-widest text-blue-200">{MONTHLY_CHALLENGE.label}</span>
             <h3 className="text-lg font-black">{MONTHLY_CHALLENGE.description}</h3>
           </div>
-          <span className="text-3xl">🎯</span>
+          <img src="/custom-icons/desafio_del_mes.png" className="w-10 h-10 object-contain drop-shadow" alt="Desafío" />
         </div>
         <div className="w-full bg-blue-900/50 rounded-full h-3 mb-2">
           <div

@@ -302,22 +302,22 @@ const ClientStatsView = ({ user, onUserUpdate, isTrainerView }: Props) => {
           {/* KPI cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col items-center justify-center text-center">
-              <div className="p-3 bg-blue-100/10 text-blue-500 rounded-full mb-3"><Dumbbell size={24} /></div>
+              <div className="mb-3"><img src="/custom-icons/sesiones_totales.png" className="w-12 h-12 object-contain" alt="Total Sesiones" /></div>
               <p className="text-slate-400 text-sm font-medium mb-1">Total Sesiones</p>
               <p className="text-3xl font-black text-white">{totalSessions}</p>
             </div>
             <div className="bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col items-center justify-center text-center">
-              <div className="p-3 bg-green-100/10 text-green-500 rounded-full mb-3"><Calendar size={24} /></div>
+              <div className="mb-3"><img src="/custom-icons/sesion_agendada.png" className="w-12 h-12 object-contain" alt="Este Mes" /></div>
               <p className="text-slate-400 text-sm font-medium mb-1">Este Mes</p>
               <p className="text-3xl font-black text-white">{thisMonthSessions}</p>
             </div>
             <div className="bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col items-center justify-center text-center">
-              <div className="p-3 bg-purple-100/10 text-purple-500 rounded-full mb-3"><Zap size={24} /></div>
+              <div className="mb-3"><img src="/custom-icons/proxima_sesion.png" className="w-12 h-12 object-contain" alt="Próxima Sesión" /></div>
               <p className="text-slate-400 text-sm font-medium mb-1">Próxima Sesión</p>
               <p className="text-lg font-bold text-white break-words w-full">{nextSessionLabel}</p>
             </div>
             <div className="bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col items-center justify-center text-center">
-              <div className="p-3 bg-yellow-100/10 text-yellow-500 rounded-full mb-3"><Star size={24} /></div>
+              <div className="mb-3"><img src="/custom-icons/plan_activo.png" className="w-12 h-12 object-contain" alt="Plan Actual" /></div>
               <p className="text-slate-400 text-sm font-medium mb-1">Plan Actual</p>
               <p className="text-lg font-bold text-white uppercase tracking-wide">{user?.plan ? getPlanName(user.plan) : 'Sin plan'}</p>
             </div>

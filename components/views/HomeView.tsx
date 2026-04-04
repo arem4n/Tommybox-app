@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dumbbell, BarChart, Star, ChevronLeft, ChevronRight, Quote, X } from 'lucide-react';
 import { View } from '../../types';
+import { db } from '../../services/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 interface HomeViewProps {
   setCurrentView: (view: View) => void;
@@ -15,43 +17,32 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const testimonials = [
+  const [testimonials, setTestimonials] = useState<any[]>([
     { text: 'Desde que empecé con Tommybox, mis dolores de espalda han desaparecido. La atención personalizada y el enfoque en la técnica han marcado una diferencia real.', author: 'María G.', rating: 5 },
-    { text: 'Logré mis objetivos de fuerza en menos tiempo de lo que esperaba. El programa es desafiante, pero siempre seguro. ¡Muy recomendado!', author: 'Juan P.', rating: 5 },
-    { text: 'El enfoque en la movilidad y la prevención de lesiones es excelente. Me siento más ágil y con más energía para mi día a día.', author: 'Ana F.', rating: 5 },
-    { text: 'La plataforma digital es muy fácil de usar y me ayuda a mantener la constancia. Mi entrenador siempre está disponible para responder mis dudas.', author: 'Carlos S.', rating: 4 },
-    { text: 'He mejorado mi rendimiento en mi deporte y he evitado lesiones. El enfoque funcional de Tommybox es exactamente lo que necesitaba.', author: 'Sofía R.', rating: 5 },
     { text: 'Un servicio de primera. Totalmente recomendado para quien busque resultados serios y sostenibles.', author: 'Luisa M.', rating: 5 },
-    { text: 'La comunidad es increíble, me motiva a seguir entrenando incluso en los días difíciles.', author: 'Pedro D.', rating: 5 },
-  ];
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(1);
-  const [isPaused, setIsPaused] = useState(false);
+    { text: 'La comunidad es increíble, me motiva a seguir entrenando incluso en los días difíciles.', author: 'Pedro D.', rating: 5 }
+  ]);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) setItemsPerPage(3);
-      else if (window.innerWidth >= 768) setItemsPerPage(2);
-      else setItemsPerPage(1);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'testimonials'), (snap) => {
+      if (!snap.empty) {
+        setTestimonials(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }
+    });
+    return () => unsub();
   }, []);
 
-  useEffect(() => {
-    if (isPaused) return;
-    const interval = setInterval(() => nextSlide(), 5000);
-    return () => clearInterval(interval);
-  }, [currentIndex, isPaused, itemsPerPage]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
-  const nextSlide = () => {
-    setCurrentIndex(prev => (prev + itemsPerPage >= testimonials.length ? 0 : prev + 1));
-  };
-  const prevSlide = () => {
-    setCurrentIndex(prev => (prev === 0 ? testimonials.length - itemsPerPage : prev - 1));
-  };
+  useEffect(() => {
+    if (isHovered || testimonials.length === 0) return;
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % testimonials.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [testimonials.length, isHovered]);
 
   return (
     <>
@@ -148,9 +139,9 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
         {/* ── Banner Section ── */}
         <div className="w-full h-64 md:h-96 bg-slate-900 relative mt-20 md:mt-32">
            <img
-              src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop"
+              src="/surpass_limits.jpg"
               alt="Gym Equipment"
-              className="w-full h-full object-cover opacity-40 mix-blend-overlay"
+              className="w-full h-full object-cover opacity-60 mix-blend-overlay"
            />
            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent"></div>
            <div className="absolute inset-0 flex items-center justify-center">
@@ -167,39 +158,110 @@ const HomeView: React.FC<HomeViewProps> = ({ setCurrentView, handleLogin, onEmai
             <div className="mt-4 w-24 h-1 bg-blue-600 mx-auto md:mx-0 rounded-full" />
           </div>
 
-          {/* Swipeable Container */}
-          <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-10 pl-4 md:pl-[calc((100vw-1152px)/2+1rem)] gap-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {testimonials.map((t, idx) => (
-              <div
-                key={idx}
-                className="snap-center shrink-0 w-[85vw] sm:w-[350px] md:w-[400px]"
-              >
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-2xl h-full flex flex-col justify-between hover:border-blue-800/50 transition-all duration-300 relative group">
-                  <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                     <Quote className="w-20 h-20 text-blue-500" />
-                  </div>
-                  <div className="flex mb-6">
-                    {[...Array(t.rating)].map((_, i) => (
-                      <Star key={i} className="text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={18} />
-                    ))}
-                  </div>
-                  <p className="text-slate-300 text-lg leading-relaxed relative z-10 font-medium mb-8">
-                    "{t.text}"
-                  </p>
-                  <div className="flex items-center gap-4 mt-auto">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-blue-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                      {t.author.charAt(0)}
+          <div className="relative w-full max-w-[1400px] mx-auto overflow-hidden md:overflow-visible">
+            {/* Mobile Swipe Container (Normal) */}
+            <div className="md:hidden flex overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-10 pl-4 pr-4 gap-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {testimonials.map((t, idx) => (
+                <div key={idx} className="snap-center shrink-0 w-[85vw] sm:w-[350px]">
+                  <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-2xl h-full flex flex-col justify-between hover:border-blue-800/50 transition-all duration-300 relative group">
+                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                       <Quote className="w-20 h-20 text-blue-500" />
                     </div>
-                    <div>
-                        <p className="font-bold text-white">{t.author}</p>
-                        <p className="text-xs text-slate-500">Atleta TommyBox</p>
+                    <div className="flex mb-6">
+                      {[...Array(t.rating)].map((_, i) => (
+                        <Star key={i} className="text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={18} />
+                      ))}
+                    </div>
+                    <p className="text-slate-300 text-lg leading-relaxed relative z-10 font-medium mb-8">"{t.text}"</p>
+                    <div className="flex items-center gap-4 mt-auto">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-blue-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {t.author.charAt(0)}
+                      </div>
+                      <div>
+                          <p className="font-bold text-white">{t.author}</p>
+                          <p className="text-xs text-slate-500">Atleta TommyBox</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {/* Right padding element so the last card can be centered/viewed properly */}
-            <div className="shrink-0 w-4 md:w-[calc((100vw-1152px)/2)]" aria-hidden="true"></div>
+              ))}
+              <div className="shrink-0 w-4" aria-hidden="true"></div>
+            </div>
+
+            {/* Desktop 3D Focused Carousel */}
+            <div 
+              className="hidden md:flex relative h-[450px] w-full max-w-[1200px] mx-auto justify-center items-center"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <button
+                onClick={() => setActiveIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
+                className="absolute left-0 lg:-left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-slate-800/80 hover:bg-blue-600 text-white rounded-full flex items-center justify-center z-50 transition-all shadow-lg border border-slate-700/50 backdrop-blur-sm"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              
+              <button
+                onClick={() => setActiveIndex((prev) => (prev + 1) % testimonials.length)}
+                className="absolute right-0 lg:-right-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-slate-800/80 hover:bg-blue-600 text-white rounded-full flex items-center justify-center z-50 transition-all shadow-lg border border-slate-700/50 backdrop-blur-sm"
+              >
+                <ChevronRight size={24} />
+              </button>
+              {testimonials.map((t, idx) => {
+                let state = 'hidden';
+                let className = 'opacity-0 scale-50 translate-x-0 z-0 pointer-events-none blur-sm';
+
+                if (idx === activeIndex) {
+                  state = 'center';
+                  className = 'opacity-100 scale-100 translate-x-0 z-30 blur-none';
+                } else if (idx === (activeIndex - 1 + testimonials.length) % testimonials.length) {
+                  state = 'left';
+                  className = 'opacity-50 scale-[0.85] -translate-x-[105%] blur-[2px] hover:opacity-70 hover:blur-[1px] cursor-pointer z-20';
+                } else if (idx === (activeIndex + 1) % testimonials.length) {
+                  state = 'right';
+                  className = 'opacity-50 scale-[0.85] translate-x-[105%] blur-[2px] hover:opacity-70 hover:blur-[1px] cursor-pointer z-20';
+                } else {
+                  const distance = (idx - activeIndex + testimonials.length) % testimonials.length;
+                  if (distance === 2) {
+                     className = 'opacity-0 scale-50 translate-x-[200%] z-10 pointer-events-none blur-sm';
+                  } else {
+                     className = 'opacity-0 scale-50 -translate-x-[200%] z-10 pointer-events-none blur-sm';
+                  }
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                       if (state === 'left') setActiveIndex((activeIndex - 1 + testimonials.length) % testimonials.length);
+                       if (state === 'right') setActiveIndex((activeIndex + 1) % testimonials.length);
+                    }}
+                    className={`absolute top-4 w-[400px] transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${className}`}
+                  >
+                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 shadow-[0_0_40px_-10px_rgba(37,99,235,0.15)] h-[380px] flex flex-col justify-between">
+                      <div className="absolute top-0 right-0 p-6 opacity-10">
+                         <Quote className="w-20 h-20 text-blue-500" />
+                      </div>
+                      <div className="flex mb-6">
+                        {[...Array(t.rating)].map((_, i) => (
+                          <Star key={i} className="text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" size={18} />
+                        ))}
+                      </div>
+                      <p className="text-slate-300 text-lg leading-relaxed relative z-10 font-medium mb-8">"{t.text}"</p>
+                      <div className="flex items-center gap-4 mt-auto">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-blue-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                          {t.author.charAt(0)}
+                        </div>
+                        <div>
+                            <p className="font-bold text-white">{t.author}</p>
+                            <p className="text-xs text-slate-500">Atleta TommyBox</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

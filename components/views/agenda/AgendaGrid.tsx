@@ -73,7 +73,7 @@ const AgendaGrid: React.FC<AgendaGridProps> = ({
       >
         {myBooking && myBooking.status !== 'rejected' && (
           <div className={`flex flex-col items-center animate-scale-up ${myBooking.status === 'pending' ? 'opacity-70' : ''}`}>
-            <span className="text-lg sm:text-xl">🥊</span>
+            <img src="/custom-icons/entrenamiento.png" className="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-sm" alt="Entrenamiento" />
             <span className={`text-[8px] font-black px-1 py-0.5 rounded mt-0.5 ${myBooking.status === 'pending' ? 'bg-amber-100 text-amber-700' : (typeStyle?.text || 'text-blue-700')}`}>
               {myBooking.status === 'pending' ? 'PENDIENTE' : (sType || 'Sesión')}
             </span>

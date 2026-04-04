@@ -12,6 +12,7 @@ import AttendanceView from './AttendanceView';
 import TrainerPlansManager from './TrainerPlansManager';
 import TrainerAnalyticsDashboard from './TrainerAnalyticsDashboard';
 import TrainerProfileView from './TrainerProfileView';
+import TrainerTestimonialsManager from './TrainerTestimonialsManager';
 import { getPlanName } from '../../utils/plans';
 import { useModal } from "../../contexts/ModalContext";
 
@@ -103,7 +104,8 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
   ];
 
   const secondaryTabs = [
-    { id: 'planes',     label: 'Planes',      imgSrc: '/custom-icons/nav_plan.png' },
+    { id: 'testimonios',label: 'Testimonios', imgSrc: '/custom-icons/nav_library.png' },
+    { id: 'planes',     label: 'Planes',      imgSrc: '/custom-icons/gestion_de_planes.png' },
     { id: 'payments',   label: 'Pagos',       imgSrc: '/custom-icons/nav_payments.png', badge: pendingPayments.length },
     { id: 'biblioteca', label: 'Biblioteca',  imgSrc: '/custom-icons/nav_library.png' },
     { id: 'analytics',  label: 'Analytics',   imgSrc: '/custom-icons/nav_achievements.png' },
@@ -148,7 +150,14 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
 
           {/* Desktop Logout/User */}
           <div className="hidden md:flex items-center gap-4 absolute right-4">
-            <span className="text-sm font-medium text-slate-400 hidden sm:block">{user?.displayName}</span>
+            <span className="text-sm font-medium text-slate-400 hidden sm:block">Entrenador {user?.displayName}</span>
+            {user?.photoURL ? (
+                <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 shadow-sm" />
+            ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                    {user?.displayName?.[0]?.toUpperCase() || 'T'}
+                </div>
+            )}
             <button
               onClick={onLogout}
               className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium"
@@ -355,6 +364,7 @@ const TrainerDashboard = ({ user, onLogout }: { user: AppUser, onLogout: () => v
         {currentTab === 'community'   && <CommunitySection user={user} />}
         {currentTab === 'biblioteca'  && <TrainerLibraryManager user={user} />}
         {currentTab === 'asistencia'  && <AttendanceView user={user} />}
+        {currentTab === 'testimonios' && <TrainerTestimonialsManager />}
         {currentTab === 'planes'      && <TrainerPlansManager user={user} />}
         {currentTab === 'analytics'   && <TrainerAnalyticsDashboard clients={clients} />}
         {currentTab === 'perfil'      && <TrainerProfileView user={user} />}
